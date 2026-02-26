@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## SimpleBank
 
-## Getting Started
+Lightweight demo banking dashboard with accounts, deposits, withdrawals, and recent transactions. Built with Next.js App Router, Tailwind CSS, Prisma, and SQLite (ideal for small user counts). Includes email/password sign-up/sign-in and session cookies.
 
-First, run the development server:
+### Features
+- Accounts with running balance and transaction history
+- Deposit and withdrawal flows with validation (no overdrafts) and deposit source selection (Mobile Wallet or Credit/Debit Card)
+- Send money to any account by typing its name (records transfer in both accounts)
+- Email/password signup & signin with cookie-based sessions (landing page is `/signin` with a link to `/signup`)
+- Email verification with 6-digit codes (SMTP via Nodemailer; logs to console if not configured)
+- Admin overview at `/admin` (first registered user becomes admin) with user/account/transaction counts and recent activity
+- Domain admin tools (optional `DOMAIN_ADMIN_EMAIL`) to edit balances, names, ownership, and dates
+- SQLite persistence via Prisma
+- Modern glassmorphic UI with subtle animation accents
 
+### Stack
+- Next.js (App Router, TypeScript)
+- Tailwind CSS v4
+- Prisma + SQLite
+- Lucide icons
+
+### Setup
+1) Install dependencies
+```bash
+npm install
+```
+2) Apply database migrations
+```bash
+npx prisma migrate dev
+```
+3) Run the app
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
+4) Open http://localhost:3000 (redirects to `/signin` when logged out)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Notes
+- Data is stored in `prisma/dev.db` (SQLite) and is fine for local/small demos.
+- Server actions handle deposit/withdraw and automatically revalidate the dashboard.
+- The first user to sign up is granted admin rights; admins can access `/admin` for an overview.
+- Set `DOMAIN_ADMIN_EMAIL` to restrict management actions to a single email; otherwise any admin may run them.
+- New users get a default "Primary" account automatically so they can transact right away.
+- Email verification uses SMTP if `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS`/`EMAIL_FROM` are set; otherwise the code is logged to the console. Example: Gmail SMTP with an app password.
