@@ -28,6 +28,11 @@ const idSchema = z
   .transform((val) => Number(val))
   .pipe(z.number().int().positive());
 
+const deleteTxnSchema = z.object({
+  transactionId: idSchema,
+  reason: z.string().trim().max(200).optional(),
+});
+
 const targetAccountNameSchema = z.string().trim().min(1).max(60);
 const requestSchema = z.object({
   targetName: z.string().trim().min(1).max(80),
@@ -73,7 +78,7 @@ async function ensureOverdraftProgress(
   }
 
   const existingAlert = await tx.transaction.findFirst({
-    where: { accountId: account.id, type: "OVERDRAFT_ALERT" },
+    where: { accountId: account.id, type: "OVERDRAFT_ALERT", deletedAt: null },
     orderBy: { createdAt: "desc" },
     select: { createdAt: true },
   });
@@ -117,7 +122,7 @@ async function ensureOverdraftProgress(
   }
 
   const lastFee = await tx.transaction.findFirst({
-    where: { accountId: account.id, type: "OVERDRAFT_FEE" },
+    where: { accountId: account.id, type: "OVERDRAFT_FEE", deletedAt: null },
     orderBy: { createdAt: "desc" },
     select: { createdAt: true },
   });
@@ -975,7 +980,51 @@ export async function transfer(formData: FormData) {
   dashRedirect({ transferSuccess: "Sent" });
 }
 
+export async function adminDeleteTransaction(formData: FormData) {
+  const parsed = deleteTxnSchema.safeParse({
+    transactionId: formData.get("transactionId"),
+    reason: formData.get("reason"),
+  });
+
+  if (!parsed.success) return;
+
+  const adminUser = await requireDomainAdmin();
+  if (!adminUser) return;
+
+  const { transactionId, reason } = parsed.data;
+
+  try {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const existing = await tx.transaction.findUnique({
+        where: { id: transactionId },
+        select: { deletedAt: true },
+      });
+
+      if (!existing || existing.deletedAt) return;
+
+      await tx.transaction.update({
+        where: { id: transactionId },
+        data: {
+          deletedAt: new Date(),
+          deletedByUserId: adminUser.id,
+          deletionReason: reason?.trim() ? reason.trim().slice(0, 200) : null,
+        },
+      });
+    });
+  } catch {
+    return;
+  }
+
+  revalidateBankViews();
+}
+
 export async function adminUpdateAccount(formData: FormData) {
+  const rawName = (formData.get("name") as string | null)?.trim() || "";
+  const rawBalance = (formData.get("balance") as string | null)?.trim() || "";
+  const rawOwnerUserId = (formData.get("ownerUserId") as string | null)?.trim() || "";
+  const rawCreatedAt = (formData.get("createdAt") as string | null)?.trim() || "";
+  const rawDescription = (formData.get("description") as string | null)?.trim() || "";
+
   const parsed = z
     .object({
       accountId: idSchema,
@@ -987,11 +1036,11 @@ export async function adminUpdateAccount(formData: FormData) {
     })
     .safeParse({
       accountId: formData.get("accountId"),
-      name: formData.get("name"),
-      balance: formData.get("balance"),
-      ownerUserId: formData.get("ownerUserId"),
-      createdAt: formData.get("createdAt"),
-      description: formData.get("description"),
+      name: rawName || undefined,
+      balance: rawBalance || undefined,
+      ownerUserId: rawOwnerUserId || undefined,
+      createdAt: rawCreatedAt || undefined,
+      description: rawDescription || undefined,
     });
 
   if (!parsed.success) return;

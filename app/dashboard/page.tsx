@@ -47,6 +47,12 @@ type TxnWithAccount = {
   account: { name: string };
 };
 
+type FeaturedAccount = {
+  name: string;
+  balanceCents: number;
+  user: { name: string };
+};
+
 type TargetAccount = { name: string; user: { name: string } };
 type OverdraftAnchor = { accountId: number; createdAt: Date };
 type RequestRow = {
@@ -78,14 +84,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   await settleUserOverdrafts(user.id);
   await settleLoanRequestPenalties(user.id);
 
-  const [accounts, transactions, targetAccountNames, overdraftAnchors, incomingRequests, outgoingRequests] = await Promise.all([
+  const [accounts, transactions, targetAccountNames, overdraftAnchors, incomingRequests, outgoingRequests, mostafaAccount] = await Promise.all([
     prisma.account.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "asc" },
-      include: { _count: { select: { transactions: true } } },
+      include: { _count: { select: { transactions: { where: { deletedAt: null } } } } },
     }) as Promise<AccountWithCount[]>,
     prisma.transaction.findMany({
-      where: { account: { userId: user.id } },
+      where: { account: { userId: user.id }, deletedAt: null },
       orderBy: { createdAt: "desc" },
       take: 10,
       include: { account: { select: { name: true } } },
@@ -95,7 +101,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       select: { name: true, user: { select: { name: true } } },
     }) as Promise<TargetAccount[]>,
     prisma.transaction.findMany({
-      where: { account: { userId: user.id }, type: { in: ["OVERDRAFT_ALERT"] } },
+      where: { account: { userId: user.id }, type: { in: ["OVERDRAFT_ALERT"] }, deletedAt: null },
       orderBy: { createdAt: "desc" },
       select: { accountId: true, createdAt: true },
     }) as Promise<OverdraftAnchor[]>,
@@ -109,6 +115,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       orderBy: { createdAt: "desc" },
       take: 20,
     }),
+    prisma.account.findFirst({
+      where: { user: { name: { contains: "Mostafa", mode: "insensitive" } } },
+      orderBy: { createdAt: "asc" },
+      select: { name: true, balanceCents: true, user: { select: { name: true } } },
+    }) as Promise<FeaturedAccount | null>,
   ] as const);
 
   const totalBalanceCents = accounts.reduce((sum: number, a: AccountWithCount) => sum + a.balanceCents, 0);
@@ -185,6 +196,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <div className="glass-panel w-full max-w-md rounded-2xl px-4 py-3 text-sm text-slate-200 shadow-lg shadow-black/30 ring-1 ring-white/10">
               {t("transferHelper")}
             </div>
+            {mostafaAccount && (
+              <div className="flex h-full items-center justify-between rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 px-4 py-3 text-sm font-semibold text-slate-900 shadow-lg shadow-amber-500/40 ring-2 ring-amber-300/60">
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-900/80">Mostafa balance</span>
+                  <span className="text-lg">{formatCurrency(mostafaAccount.balanceCents / 100)}</span>
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-2 self-end sm:self-auto">
               <LanguageToggle locale={locale} />
               <Link

@@ -21,6 +21,7 @@ model User {
   sessions  Session[]
   requestsMade Request[] @relation("requests_made")
   requestsReceived Request[] @relation("requests_received")
+  deletedTransactions Transaction[] @relation("TransactionDeletedByUser")
 }
 
 model Account {
@@ -44,6 +45,10 @@ model Transaction {
   balanceAfterCents Int
   source       String?
   createdAt    DateTime         @default(now())
+  deletedAt    DateTime?
+  deletedByUserId Int?
+  deletedByUser User?          @relation("TransactionDeletedByUser", fields: [deletedByUserId], references: [id])
+  deletionReason String?
 }
 
 model Request {
