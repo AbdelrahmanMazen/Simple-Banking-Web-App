@@ -120,15 +120,14 @@ export async function deposit(formData: FormData) {
       source: formData.get("source"),
     });
 
-    const deltaCents = Math.round(amount * 100);
-    let accountName = "";
-    let balanceAfterCents = 0;
-
   if (!parsed.success) {
     return;
   }
 
   const { accountId, amount, description, source } = parsed.data;
+  const deltaCents = Math.round(amount * 100);
+  let accountName = "";
+  let balanceAfterCents = 0;
   const user = await getCurrentUser();
   if (!user || !user.isVerified) return;
 
@@ -196,15 +195,14 @@ export async function withdraw(formData: FormData) {
       description: formData.get("description"),
     });
 
-    const deltaCents = Math.round(amount * 100);
-    let accountName = "";
-    let balanceAfterCents = 0;
-
   if (!parsed.success) {
     return;
   }
 
   const { accountId, amount, description } = parsed.data;
+  const deltaCents = Math.round(amount * 100);
+  let accountName = "";
+  let balanceAfterCents = 0;
   const user = await getCurrentUser();
   if (!user || !user.isVerified) return;
 
@@ -296,6 +294,10 @@ export async function transfer(formData: FormData) {
   let sourceAccountName = "";
   let senderBalanceAfter = 0;
   let counterpartyName = "";
+  let receiverAccountName = "";
+  let receiverEmail = "";
+  let receiverBalanceAfter = 0;
+  let receiverUserName = "";
 
   try {
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -315,7 +317,7 @@ export async function transfer(formData: FormData) {
           name: true,
           balanceCents: true,
           userId: true,
-          user: { select: { name: true } },
+          user: { select: { name: true, email: true } },
         },
       });
 
@@ -376,6 +378,10 @@ export async function transfer(formData: FormData) {
       sourceAccountName = source.name;
       senderBalanceAfter = senderNext;
       counterpartyName = `${target.name} (${target.user.name})`;
+      receiverAccountName = target.name;
+      receiverEmail = target.user.email;
+      receiverBalanceAfter = receiverNext;
+      receiverUserName = target.user.name;
 
       await tx.account.update({
         where: { id: source.id },
@@ -405,6 +411,9 @@ export async function transfer(formData: FormData) {
         data: {
           accountId: target.id,
           type: "TRANSFER_IN",
+            receiverAccountName = target.name;
+            receiverEmail = target.user.email;
+            receiverBalanceAfter = receiverNext;
           amountCents: deltaCents,
           description: incomingDescription,
           balanceAfterCents: receiverNext,
@@ -433,6 +442,21 @@ export async function transfer(formData: FormData) {
     counterparty: counterpartyName || undefined,
     timestamp: new Date(),
   });
+
+  if (receiverEmail) {
+    await sendTransactionEmail({
+      to: receiverEmail,
+      userName: receiverUserName || "Customer",
+      accountName: receiverAccountName || "Account",
+      type: "TRANSFER_IN",
+      amountCents: deltaCents,
+      balanceAfterCents: receiverBalanceAfter,
+      description,
+      source: sourceAccountName ? `From: ${sourceAccountName}` : undefined,
+      counterparty: sourceAccountName ? `${sourceAccountName} (${user.name})` : undefined,
+      timestamp: new Date(),
+    });
+  }
 
   revalidateBankViews();
   dashRedirect({ transferSuccess: "Sent" });
@@ -504,6 +528,9 @@ export async function adminUpdateAccount(formData: FormData) {
 
       await tx.account.update({ where: { id: accountId }, data: updateData });
 
+        receiverAccountName = target.name;
+        receiverEmail = target.user.email;
+        receiverBalanceAfter = receiverNext;
       if (balance !== undefined) {
         await tx.transaction.create({
           data: {
