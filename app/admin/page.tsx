@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { Funnel, History, ListFilter, ShieldCheck, Trash2, Users, Wrench } from "lucide-react";
 import { redirect } from "next/navigation";
-import { adminDeleteTransaction, adminDeleteUser, adminUpdateAccount } from "@/app/actions/bankActions";
+import { adminClearAuditTrail, adminDeleteTransaction, adminDeleteUser, adminUpdateAccount } from "@/app/actions/bankActions";
 import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
@@ -440,6 +440,21 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                 <h2 className="text-lg font-semibold text-white">Deleted transactions</h2>
                 <p className="text-sm text-slate-400">Kept for compliance while hidden from all user views.</p>
               </div>
+              <form action={adminClearAuditTrail} className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 ring-1 ring-white/10 md:flex-row md:items-center md:gap-3">
+                <input
+                  name="confirm"
+                  required
+                  placeholder="Type CLEAR to purge"
+                  className="h-10 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-rose-200/70 focus:ring-rose-200/30 focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  disabled={!isDomainAdmin}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-rose-500/25 transition hover:-translate-y-0.5 hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Trash2 className="h-4 w-4" /> Clear audit log
+                </button>
+              </form>
             </div>
             <div className="mt-4 divide-y divide-white/5">
               {deletedTx.map((txn) => (

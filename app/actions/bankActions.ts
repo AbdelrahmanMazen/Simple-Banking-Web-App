@@ -38,6 +38,10 @@ const deleteUserSchema = z.object({
   reason: z.string().trim().max(200).optional(),
 });
 
+const clearAuditSchema = z.object({
+  confirm: z.string().trim().toLowerCase(),
+});
+
 const targetAccountNameSchema = z.string().trim().min(1).max(60);
 const requestSchema = z.object({
   targetName: z.string().trim().min(1).max(80),
@@ -1021,6 +1025,25 @@ export async function adminDeleteTransaction(formData: FormData) {
   }
 
   revalidateBankViews();
+}
+
+export async function adminClearAuditTrail(formData: FormData) {
+  const parsed = clearAuditSchema.safeParse({ confirm: formData.get("confirm") });
+  if (!parsed.success) return;
+
+  const adminUser = await requireDomainAdmin();
+  if (!adminUser) return;
+
+  if (parsed.data.confirm !== "clear") return;
+
+  try {
+    await prisma.transaction.deleteMany({ where: { deletedAt: { not: null } } });
+  } catch {
+    return;
+  }
+
+  revalidateBankViews();
+  revalidatePath("/admin");
 }
 
 export async function adminDeleteUser(formData: FormData) {
