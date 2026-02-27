@@ -185,7 +185,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                     Account
                     <div className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-3 text-base text-white ring-1 ring-white/5 focus-within:border-emerald-300/60 focus-within:ring-emerald-200/30">
                       <div className="flex h-full items-center justify-between text-sm text-slate-200">
-                        <span className="truncate">{primaryAccount?.name ?? "Primary"}</span>
+                        <span className="truncate">{primaryAccount?.name ?? "Select an account"}</span>
                         <span className="text-xs text-slate-400">Auto-selected</span>
                       </div>
                       {primaryAccountId && <input type="hidden" name="accountId" value={primaryAccountId} />}
@@ -254,7 +254,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                     Account
                     <div className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-3 text-base text-white ring-1 ring-white/5 focus-within:border-rose-200/70 focus-within:ring-rose-200/30">
                       <div className="flex h-full items-center justify-between text-sm text-slate-200">
-                        <span className="truncate">{primaryAccount?.name ?? "Primary"}</span>
+                        <span className="truncate">{primaryAccount?.name ?? "Select an account"}</span>
                         <span className="text-xs text-slate-400">Auto-selected</span>
                       </div>
                       {primaryAccountId && <input type="hidden" name="accountId" value={primaryAccountId} />}
@@ -312,7 +312,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                     From account
                     <div className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-3 text-base text-white ring-1 ring-white/5 focus-within:border-blue-200/70 focus-within:ring-blue-200/30">
                       <div className="flex h-full items-center justify-between text-sm text-slate-200">
-                        <span className="truncate">{primaryAccount?.name ?? "Primary"}</span>
+                        <span className="truncate">{primaryAccount?.name ?? "Select an account"}</span>
                         <span className="text-xs text-slate-400">Auto-selected</span>
                       </div>
                       {primaryAccountId && <input type="hidden" name="fromAccountId" value={primaryAccountId} />}
@@ -367,7 +367,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 )}
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   {!hasAccounts && (
-                    <p className="text-sm text-slate-400">No accounts available. Your primary account is created on sign up.</p>
+                    <p className="text-sm text-slate-400">No accounts available. Your first account is created on sign up.</p>
                   )}
                   <div className="flex justify-end sm:justify-start">
                     <button

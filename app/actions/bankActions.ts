@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
+import { sendTransactionEmail } from "@/lib/email";
 import prisma from "@/lib/prisma";
 
 const moneySchema = z
@@ -119,6 +120,10 @@ export async function deposit(formData: FormData) {
       source: formData.get("source"),
     });
 
+    const deltaCents = Math.round(amount * 100);
+    let accountName = "";
+    let balanceAfterCents = 0;
+
   if (!parsed.success) {
     return;
   }
@@ -131,15 +136,16 @@ export async function deposit(formData: FormData) {
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const account = await tx.account.findFirst({
         where: { id: accountId, userId: user.id },
-        select: { id: true, balanceCents: true },
+        select: { id: true, balanceCents: true, name: true },
       });
 
       if (!account) {
         throw new Error("Account not found");
       }
 
-      const deltaCents = Math.round(amount * 100);
       const nextBalance = account.balanceCents + deltaCents;
+      accountName = account.name;
+      balanceAfterCents = nextBalance;
 
       await tx.account.update({
         where: { id: account.id },
@@ -162,6 +168,19 @@ export async function deposit(formData: FormData) {
   }
 
   revalidateBankViews();
+
+  // Send receipt email (best-effort)
+  await sendTransactionEmail({
+    to: user.email,
+    userName: user.name,
+    accountName: accountName || "Account",
+    type: "DEPOSIT",
+    amountCents: deltaCents,
+    balanceAfterCents,
+    description,
+    source,
+    timestamp: new Date(),
+  });
 }
 
 export async function withdraw(formData: FormData) {
@@ -177,6 +196,10 @@ export async function withdraw(formData: FormData) {
       description: formData.get("description"),
     });
 
+    const deltaCents = Math.round(amount * 100);
+    let accountName = "";
+    let balanceAfterCents = 0;
+
   if (!parsed.success) {
     return;
   }
@@ -189,20 +212,20 @@ export async function withdraw(formData: FormData) {
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const account = await tx.account.findFirst({
         where: { id: accountId, userId: user.id },
-        select: { id: true, balanceCents: true },
+        select: { id: true, balanceCents: true, name: true },
       });
 
       if (!account) {
         throw new Error("Account not found");
       }
 
-      const deltaCents = Math.round(amount * 100);
-
       if (account.balanceCents < deltaCents) {
         throw new Error("Insufficient funds");
       }
 
       const nextBalance = account.balanceCents - deltaCents;
+      accountName = account.name;
+      balanceAfterCents = nextBalance;
 
       await tx.account.update({
         where: { id: account.id },
@@ -224,6 +247,17 @@ export async function withdraw(formData: FormData) {
   }
 
   revalidateBankViews();
+
+  await sendTransactionEmail({
+    to: user.email,
+    userName: user.name,
+    accountName: accountName || "Account",
+    type: "WITHDRAW",
+    amountCents: deltaCents,
+    balanceAfterCents,
+    description,
+    timestamp: new Date(),
+  });
 }
 
 export async function transfer(formData: FormData) {
@@ -257,6 +291,11 @@ export async function transfer(formData: FormData) {
 
   const parsedCombo = splitOnDash(rawTarget);
   const normalizedRaw = normalize(rawTarget);
+
+  const deltaCents = Math.round(amount * 100);
+  let sourceAccountName = "";
+  let senderBalanceAfter = 0;
+  let counterpartyName = "";
 
   try {
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -328,14 +367,15 @@ export async function transfer(formData: FormData) {
         dashRedirect({ transferError: "Cannot transfer to the same account" });
       }
 
-      const deltaCents = Math.round(amount * 100);
-
       if (source.balanceCents < deltaCents) {
         dashRedirect({ transferError: "Insufficient funds" });
       }
 
       const senderNext = source.balanceCents - deltaCents;
       const receiverNext = target.balanceCents + deltaCents;
+      sourceAccountName = source.name;
+      senderBalanceAfter = senderNext;
+      counterpartyName = `${target.name} (${target.user.name})`;
 
       await tx.account.update({
         where: { id: source.id },
@@ -380,6 +420,19 @@ export async function transfer(formData: FormData) {
     }
     dashRedirect({ transferError: "Transfer failed" });
   }
+
+  await sendTransactionEmail({
+    to: user.email,
+    userName: user.name,
+    accountName: sourceAccountName || "Account",
+    type: "TRANSFER_OUT",
+    amountCents: deltaCents,
+    balanceAfterCents: senderBalanceAfter,
+    description,
+    source: counterpartyName ? `To: ${counterpartyName}` : undefined,
+    counterparty: counterpartyName || undefined,
+    timestamp: new Date(),
+  });
 
   revalidateBankViews();
   dashRedirect({ transferSuccess: "Sent" });
