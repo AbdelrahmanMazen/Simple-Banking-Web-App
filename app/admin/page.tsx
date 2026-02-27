@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { Funnel, History, ListFilter, ShieldCheck, Trash2, Users, Wrench } from "lucide-react";
 import { redirect } from "next/navigation";
-import { adminDeleteTransaction, adminUpdateAccount } from "@/app/actions/bankActions";
+import { adminDeleteTransaction, adminDeleteUser, adminUpdateAccount } from "@/app/actions/bankActions";
 import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
@@ -154,6 +154,53 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Balance</p>
             <p className="mt-2 text-3xl font-semibold text-white">{formatCurrency(totalBalanceCents / 100)}</p>
             <p className="text-xs text-slate-500">System-wide holdings</p>
+          </div>
+        </section>
+
+        <section className="glass-panel rounded-3xl p-[1.5px] shadow-2xl shadow-black/30">
+          <div className="rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-rose-500/10 to-white/0 p-6">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm text-rose-200">Danger zone</p>
+                <h2 className="text-lg font-semibold text-white">Delete user</h2>
+                <p className="text-sm text-slate-300">Removes user, accounts, transactions, sessions, and requests.</p>
+              </div>
+              <div className="rounded-xl bg-white/5 px-3 py-2 text-xs text-slate-300 ring-1 ring-white/10">
+                {domainAdminEmail ? `Only ${domainAdminEmail} can execute.` : "Admins only."}
+              </div>
+            </div>
+
+            <form action={adminDeleteUser} className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <label className="space-y-2 text-sm font-medium text-slate-100 lg:col-span-1">
+                User ID
+                <input
+                  name="userId"
+                  type="number"
+                  min="1"
+                  required
+                  className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-3 text-base text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-rose-200/70 focus:ring-rose-200/30 focus:outline-none"
+                  placeholder="e.g. 12"
+                />
+              </label>
+              <label className="space-y-2 text-sm font-medium text-slate-100 lg:col-span-2">
+                Reason (optional)
+                <input
+                  name="reason"
+                  className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-3 text-base text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-rose-200/70 focus:ring-rose-200/30 focus:outline-none"
+                  placeholder="Why this user is being deleted"
+                />
+              </label>
+              <div className="lg:col-span-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                <p className="text-xs text-rose-200">Cannot delete domain admin or yourself.</p>
+                <button
+                  type="submit"
+                  disabled={!isDomainAdmin}
+                  className="inline-flex items-center gap-2 rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-rose-500/25 transition hover:-translate-y-0.5 hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Trash2 className="h-4 w-4" /> Delete user
+                </button>
+              </div>
+            </form>
           </div>
         </section>
 

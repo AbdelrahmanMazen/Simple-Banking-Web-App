@@ -33,6 +33,11 @@ const deleteTxnSchema = z.object({
   reason: z.string().trim().max(200).optional(),
 });
 
+const deleteUserSchema = z.object({
+  userId: idSchema,
+  reason: z.string().trim().max(200).optional(),
+});
+
 const targetAccountNameSchema = z.string().trim().min(1).max(60);
 const requestSchema = z.object({
   targetName: z.string().trim().min(1).max(80),
@@ -1016,6 +1021,48 @@ export async function adminDeleteTransaction(formData: FormData) {
   }
 
   revalidateBankViews();
+}
+
+export async function adminDeleteUser(formData: FormData) {
+  const parsed = deleteUserSchema.safeParse({
+    userId: formData.get("userId"),
+    reason: formData.get("reason"),
+  });
+
+  if (!parsed.success) return;
+
+  const adminUser = await requireDomainAdmin();
+  if (!adminUser) return;
+
+  const { userId } = parsed.data;
+
+  const target = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, isAdmin: true, email: true, name: true } });
+  if (!target) return;
+
+  // Protect domain admin and self from accidental deletion.
+  const isDomainAdmin = domainAdminEmail ? target.email.toLowerCase() === domainAdminEmail : false;
+  if (isDomainAdmin || target.id === adminUser.id) return;
+
+  try {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const accounts = await tx.account.findMany({ where: { userId }, select: { id: true } });
+      const accountIds = accounts.map((a) => a.id);
+
+      if (accountIds.length) {
+        await tx.transaction.deleteMany({ where: { accountId: { in: accountIds } } });
+        await tx.account.deleteMany({ where: { id: { in: accountIds } } });
+      }
+
+      await tx.request.deleteMany({ where: { OR: [{ requesterId: userId }, { targetUserId: userId }] } });
+      await tx.session.deleteMany({ where: { userId } });
+      await tx.user.delete({ where: { id: userId } });
+    });
+  } catch {
+    return;
+  }
+
+  revalidateBankViews();
+  revalidatePath("/");
 }
 
 export async function adminUpdateAccount(formData: FormData) {
