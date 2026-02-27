@@ -1,0 +1,21 @@
+Vercel Postgres setup (copy/paste guide)
+
+1) Create Postgres in Vercel
+- Go to Vercel > Storage > Add Postgres.
+- Pick project and environments.
+- Custom prefix: POSTGRES (default, works fine).
+- Create the database.
+
+2) Set DATABASE_URL in Vercel env vars
+- After creation, Vercel shows env vars like POSTGRES_PRISMA_URL and POSTGRES_URL.
+- In Project Settings > Environment Variables, add:
+  Name: DATABASE_URL
+  Value: (paste the value of POSTGRES_PRISMA_URL)
+  Environments: Production (and Preview/Development if you want)
+- Save.
+
+3) Redeploy
+- Trigger a new deployment. Build command already runs `npx prisma migrate deploy && next build`.
+
+Optional local .env (if you want to match prod locally)
+- Add to .env: DATABASE_URL="<paste POSTGRES_PRISMA_URL here>"

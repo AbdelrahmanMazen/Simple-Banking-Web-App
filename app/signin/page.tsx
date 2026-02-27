@@ -17,11 +17,14 @@ export default async function SigninPage() {
       <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center gap-6 px-6 py-14">
         <div className="glass-panel rounded-3xl p-[1.5px] shadow-2xl shadow-black/40">
           <div className="rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-white/10 to-white/0 p-8">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 rounded-full bg-sky-500/15 px-3 py-1 text-xs font-semibold text-sky-100 ring-1 ring-sky-400/30">
+                  <span className="h-2 w-2 rounded-full bg-sky-300" /> Secure sign in
+                </div>
                 <p className="text-sm uppercase tracking-[0.2em] text-slate-400">SimpleBank</p>
                 <h1 className="text-3xl font-semibold text-white">Sign in</h1>
-                <p className="mt-2 text-slate-300">Access your accounts, transactions, and admin dashboard.</p>
+                <p className="mt-1 text-slate-300">Access your accounts, transactions, and admin dashboard.</p>
               </div>
               <Link
                 href="/signup"
@@ -78,7 +81,6 @@ export default async function SigninPage() {
                 >
                   Continue
                 </button>
-                <p className="text-xs text-slate-400">The first account created will be made admin by default.</p>
               </form>
             )}
           </div>

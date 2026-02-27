@@ -32,10 +32,11 @@ export async function createUser(email: string, name: string, password: string) 
       },
     });
 
-    // Create a default primary account so new users can transact immediately.
+    // Create a default account tied to the user's identity so they can transact immediately.
+    const accountName = name?.trim() || email;
     await tx.account.create({
       data: {
-        name: "Primary",
+        name: accountName,
         userId: createdUser.id,
       },
     });

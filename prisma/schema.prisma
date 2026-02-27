@@ -19,6 +19,8 @@ model User {
   createdAt DateTime  @default(now())
   accounts  Account[]
   sessions  Session[]
+  requestsMade Request[] @relation("requests_made")
+  requestsReceived Request[] @relation("requests_received")
 }
 
 model Account {
@@ -42,6 +44,25 @@ model Transaction {
   balanceAfterCents Int
   source       String?
   createdAt    DateTime         @default(now())
+}
+
+model Request {
+  id                 Int      @id @default(autoincrement())
+  requesterId        Int
+  requester          User     @relation("requests_made", fields: [requesterId], references: [id])
+  targetUserId       Int
+  targetUser         User     @relation("requests_received", fields: [targetUserId], references: [id])
+  amountCents        Int
+  type               String   // DEMAND or LOAN
+  status             String   // PENDING, ACCEPTED, REJECTED
+  description        String?
+  dueAt              DateTime
+  lastPenaltyAt      DateTime?
+  penaltyAccruedCents Int     @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  acceptedAt         DateTime?
+  rejectedAt         DateTime?
 }
 
 model Session {

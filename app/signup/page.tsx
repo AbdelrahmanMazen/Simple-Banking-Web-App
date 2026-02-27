@@ -18,11 +18,14 @@ export default async function SignupPage() {
       <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center gap-6 px-6 py-14">
         <div className="glass-panel rounded-3xl p-[1.5px] shadow-2xl shadow-black/40">
           <div className="rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-white/10 to-white/0 p-8">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-100 ring-1 ring-emerald-400/30">
+                  <span className="h-2 w-2 rounded-full bg-emerald-300" /> Secure signup
+                </div>
                 <p className="text-sm uppercase tracking-[0.2em] text-slate-400">SimpleBank</p>
                 <h1 className="text-3xl font-semibold text-white">Create account</h1>
-                <p className="mt-2 text-slate-300">Sign up to start managing balances and transactions. We’ll email a 6-digit code to verify you.</p>
+                <p className="mt-1 text-slate-300">Sign up to start managing balances and transactions. We’ll email a 6-digit code to verify you.</p>
               </div>
               <Link
                 href="/"
@@ -88,7 +91,6 @@ export default async function SignupPage() {
                 >
                   Create account
                 </button>
-                <p className="text-xs text-slate-400">First registered user becomes admin automatically.</p>
                 <p className="text-xs text-slate-400">After submitting, check your inbox for a verification code.</p>
               </form>
             )}
