@@ -14,7 +14,7 @@ const MS_PER_DAY = 1000 * 60 * 60 * 24;
 const moneySchema = z
   .string()
   .trim()
-  .transform((val) => Number(val))
+  .transform((val) => Number(val.replace(",", ".")))
   .pipe(z.number().positive());
 
 const adminMoneySchema = z
@@ -33,6 +33,11 @@ const deleteTxnSchema = z.object({
   reason: z.string().trim().max(200).optional(),
 });
 
+const deleteTxnBulkSchema = z.object({
+  transactionIds: z.array(idSchema).min(1),
+  reason: z.string().trim().max(200).optional(),
+});
+
 const deleteUserSchema = z.object({
   userId: idSchema,
   reason: z.string().trim().max(200).optional(),
@@ -42,7 +47,12 @@ const clearAuditSchema = z.object({
   confirm: z.string().trim().toLowerCase(),
 });
 
-const targetAccountNameSchema = z.string().trim().min(1).max(60);
+const adjustMostafaDebtSchema = z.object({
+  amount: adminMoneySchema,
+  direction: z.enum(["add", "pay"]),
+});
+
+const targetAccountNameSchema = z.string().trim().min(1).max(120);
 const requestSchema = z.object({
   targetName: z.string().trim().min(1).max(80),
   amount: moneySchema,
@@ -250,6 +260,23 @@ async function getOrCreateUserAccount(userId: number) {
     data: {
       userId,
       name: fallbackName.slice(0, 60),
+    },
+  });
+}
+
+async function getOrCreateMostafaDebtAccount(tx: Prisma.TransactionClient, mostafaUserId: number) {
+  const existing = await tx.account.findFirst({
+    where: { userId: mostafaUserId, name: { contains: "debt", mode: "insensitive" } },
+    orderBy: { createdAt: "asc" },
+  });
+
+  if (existing) return existing;
+
+  return tx.account.create({
+    data: {
+      userId: mostafaUserId,
+      name: "Mostafa Debt",
+      balanceCents: 0,
     },
   });
 }
@@ -790,19 +817,21 @@ export async function transfer(formData: FormData) {
       toAccountName: targetAccountNameSchema,
       amount: moneySchema,
       description: z.string().optional(),
+      skipDebtPaydown: z.union([z.literal("1"), z.literal("true"), z.literal("on")]).optional(),
     })
     .safeParse({
       fromAccountId: formData.get("fromAccountId"),
       toAccountName: formData.get("toAccountName"),
       amount: formData.get("amount"),
       description: formData.get("description"),
+      skipDebtPaydown: formData.get("skipDebtPaydown") ?? undefined,
     });
 
   if (!parsed.success) {
     dashRedirect({ transferError: "Invalid transfer request" });
   }
 
-  const { fromAccountId, toAccountName, amount, description } = parsed.data;
+  const { fromAccountId, toAccountName, amount, description, skipDebtPaydown } = parsed.data;
   const user = await getCurrentUser();
   if (!user || !user.isVerified) return;
 
@@ -825,6 +854,8 @@ export async function transfer(formData: FormData) {
   let receiverEmail = "";
   let receiverBalanceAfter = 0;
   let receiverUserName = "";
+  let creditedCents = 0;
+  let appliedToDebt = 0;
 
   try {
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -900,7 +931,15 @@ export async function transfer(formData: FormData) {
       const settledSource = await ensureOverdraftProgress(tx, source);
       const senderNext = settledSource.balanceCents - deltaCents;
       const settledTarget = target.balanceCents < 0 ? await ensureOverdraftProgress(tx, target) : { balanceCents: target.balanceCents, anchorDate: target.createdAt };
-      const receiverNext = settledTarget.balanceCents + deltaCents;
+
+      const isMostafaTarget = target.user.name.toLowerCase().includes("mostafa");
+      const mostafaDebt = isMostafaTarget ? await getOrCreateMostafaDebtAccount(tx, target.userId) : null;
+
+      const skipPaydown = !!skipDebtPaydown;
+      appliedToDebt = !skipPaydown && mostafaDebt ? Math.min(deltaCents, Math.max(0, mostafaDebt.balanceCents)) : 0;
+      creditedCents = deltaCents - appliedToDebt;
+
+      const receiverNext = settledTarget.balanceCents + creditedCents;
       sourceAccountName = source.name;
       senderBalanceAfter = senderNext;
       counterpartyName = `${target.name} (${target.user.name})`;
@@ -923,6 +962,22 @@ export async function transfer(formData: FormData) {
         data: { balanceCents: receiverNext },
       });
 
+      if (appliedToDebt > 0 && mostafaDebt) {
+        const nextDebt = Math.max(0, mostafaDebt.balanceCents - appliedToDebt);
+        await tx.account.update({ where: { id: mostafaDebt.id }, data: { balanceCents: nextDebt } });
+
+        await tx.transaction.create({
+          data: {
+            accountId: mostafaDebt.id,
+            type: "DEBT_PAYDOWN",
+            amountCents: appliedToDebt,
+            description: `Paydown from transfer to ${target.name}`,
+            balanceAfterCents: nextDebt,
+            source: `From: ${source.name}`,
+          },
+        });
+      }
+
       const outgoingDescription = description?.slice(0, 120) || `Transfer to ${target.name}`;
       const incomingDescription = description?.slice(0, 120) || `Transfer from ${source.name}`;
 
@@ -937,16 +992,18 @@ export async function transfer(formData: FormData) {
         },
       });
 
-      await tx.transaction.create({
-        data: {
-          accountId: target.id,
-          type: "TRANSFER_IN",
-          amountCents: deltaCents,
-          description: incomingDescription,
-          balanceAfterCents: receiverNext,
-          source: `From: ${source.name}`,
-        },
-      });
+      if (creditedCents > 0) {
+        await tx.transaction.create({
+          data: {
+            accountId: target.id,
+            type: "TRANSFER_IN",
+            amountCents: creditedCents,
+            description: incomingDescription,
+            balanceAfterCents: receiverNext,
+            source: `From: ${source.name}`,
+          },
+        });
+      }
     });
   } catch (err) {
     const isNextRedirect =
@@ -970,13 +1027,13 @@ export async function transfer(formData: FormData) {
     timestamp: new Date(),
   });
 
-  if (receiverEmail) {
+  if (receiverEmail && creditedCents > 0) {
     await sendTransactionEmail({
       to: receiverEmail,
       userName: receiverUserName || "Customer",
       accountName: receiverAccountName || "Account",
       type: "TRANSFER_IN",
-      amountCents: deltaCents,
+      amountCents: creditedCents,
       balanceAfterCents: receiverBalanceAfter,
       description,
       source: sourceAccountName ? `From: ${sourceAccountName}` : undefined,
@@ -1027,6 +1084,32 @@ export async function adminDeleteTransaction(formData: FormData) {
   revalidateBankViews();
 }
 
+export async function adminDeleteTransactionsBulk(formData: FormData) {
+  const parsed = deleteTxnBulkSchema.safeParse({
+    transactionIds: formData.getAll("transactionIds"),
+    reason: formData.get("reason"),
+  });
+
+  if (!parsed.success) return;
+
+  const adminUser = await requireDomainAdmin();
+  if (!adminUser) return;
+
+  const ids = Array.from(new Set(parsed.data.transactionIds));
+  const reason = parsed.data.reason?.trim() ? parsed.data.reason.trim().slice(0, 200) : null;
+
+  try {
+    await prisma.transaction.updateMany({
+      where: { id: { in: ids }, deletedAt: null },
+      data: { deletedAt: new Date(), deletedByUserId: adminUser.id, deletionReason: reason },
+    });
+  } catch {
+    return;
+  }
+
+  revalidateBankViews();
+}
+
 export async function adminClearAuditTrail(formData: FormData) {
   const parsed = clearAuditSchema.safeParse({ confirm: formData.get("confirm") });
   if (!parsed.success) return;
@@ -1043,6 +1126,65 @@ export async function adminClearAuditTrail(formData: FormData) {
   }
 
   revalidateBankViews();
+  revalidatePath("/admin");
+}
+
+export async function updateMostafaDebt(formData: FormData) {
+  const parsed = adjustMostafaDebtSchema.safeParse({
+    amount: formData.get("amount"),
+    direction: formData.get("direction"),
+  });
+
+  if (!parsed.success) return;
+
+  const user = await getCurrentUser();
+  if (!user || !user.isVerified) return;
+
+  const adminUser = await requireDomainAdmin();
+  const isMostafaUser = user.name.toLowerCase().includes("mostafa");
+  if (!isMostafaUser && !adminUser) return;
+
+  const mostafaUser = isMostafaUser
+    ? user
+    : await prisma.user.findFirst({ where: { name: { contains: "Mostafa", mode: "insensitive" } } });
+
+  if (!mostafaUser) return;
+
+  const deltaCents = Math.round(parsed.data.amount * 100);
+  if (deltaCents <= 0) return;
+
+  try {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const debtAccount = await getOrCreateMostafaDebtAccount(tx, mostafaUser.id);
+
+      let nextBalance = debtAccount.balanceCents;
+      if (parsed.data.direction === "add") {
+        nextBalance = debtAccount.balanceCents + deltaCents;
+      } else {
+        nextBalance = Math.max(0, debtAccount.balanceCents - deltaCents);
+      }
+
+      if (nextBalance === debtAccount.balanceCents) return;
+
+      await tx.account.update({ where: { id: debtAccount.id }, data: { balanceCents: nextBalance } });
+
+      await tx.transaction.create({
+        data: {
+          accountId: debtAccount.id,
+          type: parsed.data.direction === "add" ? "DEBT_ADD" : "DEBT_PAY",
+          amountCents: deltaCents,
+          description: parsed.data.direction === "add" ? "Debt increased" : "Debt payment",
+          balanceAfterCents: nextBalance,
+          source: isMostafaUser ? "Mostafa debt control" : "Admin debt control",
+        },
+      });
+    });
+  } catch {
+    return;
+  }
+
+  revalidateBankViews();
+  revalidatePath("/dashboard");
   revalidatePath("/admin");
 }
 

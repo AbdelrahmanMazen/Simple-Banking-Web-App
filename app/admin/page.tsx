@@ -1,9 +1,11 @@
 import { Prisma } from "@prisma/client";
 import { Funnel, History, ListFilter, ShieldCheck, Trash2, Users, Wrench } from "lucide-react";
 import { redirect } from "next/navigation";
-import { adminClearAuditTrail, adminDeleteTransaction, adminDeleteUser, adminUpdateAccount } from "@/app/actions/bankActions";
+import { adminClearAuditTrail, adminDeleteUser, adminUpdateAccount, updateMostafaDebt } from "@/app/actions/bankActions";
 import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import SubmitWithOverlay from "@/app/components/form-pending-overlay";
+import TransactionsManager from "./transactions-manager";
 
 function formatCurrency(amount: number) {
   return amount.toLocaleString("en-EG", {
@@ -71,7 +73,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
       : {}),
   };
 
-  const [counts, accounts, recentTx, deletedTx] = await Promise.all([
+  const [counts, accounts, recentTx, deletedTx, mostafaDebt] = await Promise.all([
     prisma.$transaction([
       prisma.user.count(),
       prisma.account.count(),
@@ -104,11 +106,29 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
       },
       orderBy: { deletedAt: "desc" },
       take: 15,
-    }) as Promise<AdminTxn[]>,
+    }) as Promise<AdminTxn[]> ,
+    prisma.account.findFirst({
+      where: { user: { name: { contains: "Mostafa", mode: "insensitive" } }, name: { contains: "debt", mode: "insensitive" } },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, name: true, balanceCents: true, user: { select: { name: true, email: true } } },
+    }),
   ] as const);
 
   const [totalUsers, totalAccounts, totalActiveTransactions, totalDeletedTransactions, balanceAgg] = counts;
   const totalBalanceCents = balanceAgg._sum.balanceCents ?? 0;
+  const recentTxView = recentTx.map((txn) => ({
+    id: txn.id,
+    description: txn.description,
+    type: txn.type,
+    amountCents: txn.amountCents,
+    balanceAfterCents: txn.balanceAfterCents,
+    source: txn.source,
+    createdAt: txn.createdAt.toISOString(),
+    deletedAt: txn.deletedAt ? txn.deletedAt.toISOString() : null,
+    deletionReason: txn.deletionReason,
+    account: { name: txn.account.name, user: { name: txn.account.user.name } },
+    deletedByUser: txn.deletedByUser ? { name: txn.deletedByUser.name, email: txn.deletedByUser.email } : null,
+  }));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
@@ -192,13 +212,15 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
               </label>
               <div className="lg:col-span-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
                 <p className="text-xs text-rose-200">Cannot delete domain admin or yourself.</p>
-                <button
-                  type="submit"
+                <SubmitWithOverlay
+                  label="Delete user"
+                  pendingLabel="Deleting..."
+                  overlayMessage="Deleting user..."
                   disabled={!isDomainAdmin}
                   className="inline-flex items-center gap-2 rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-rose-500/25 transition hover:-translate-y-0.5 hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Trash2 className="h-4 w-4" /> Delete user
-                </button>
+                </SubmitWithOverlay>
               </div>
             </form>
           </div>
@@ -282,13 +304,15 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                 <p className="text-xs text-slate-400">
                   {domainAdminEmail ? `Only the domain admin (${domainAdminEmail}) can run these actions.` : "Restricted to admins only."}
                 </p>
-                <button
-                  type="submit"
+                <SubmitWithOverlay
+                  label="Apply changes"
+                  pendingLabel="Applying..."
+                  overlayMessage="Updating account..."
                   disabled={!isDomainAdmin}
                   className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Wrench className="h-4 w-4" /> Apply changes
-                </button>
+                </SubmitWithOverlay>
               </div>
             </form>
           </div>
@@ -377,56 +401,8 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                 </button>
               </form>
             </div>
-            <div className="mt-4 divide-y divide-white/5">
-              {recentTx.map((txn) => (
-                <div key={txn.id} className="flex flex-col gap-3 py-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-white">{txn.description || txn.type}</p>
-                      {txn.deletedAt && (
-                        <span className="rounded-full bg-rose-500/15 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-rose-200 ring-1 ring-rose-400/30">
-                          Deleted
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-slate-400">
-                      #{txn.id} • {txn.account.user.name} • {txn.account.name} • {new Date(txn.createdAt).toLocaleString()}
-                      {txn.source ? ` • ${txn.source}` : ""}
-                    </p>
-                    {txn.deletedAt && (
-                      <p className="text-[11px] text-rose-200">
-                        Deleted at {new Date(txn.deletedAt).toLocaleString()} by {txn.deletedByUser?.name || "Admin"}
-                        {txn.deletionReason ? ` • ${txn.deletionReason}` : ""}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3 text-sm font-semibold">
-                    <span className={txn.type === "DEPOSIT" || txn.type === "TRANSFER_IN" ? "text-emerald-300" : "text-rose-200"}>
-                      {(txn.type === "DEPOSIT" || txn.type === "TRANSFER_IN") ? "+" : "-"}
-                      {formatCurrency(txn.amountCents / 100)}
-                    </span>
-                    <span className="rounded-full bg-white/5 px-3 py-1 text-xs text-slate-200">
-                      Bal: {formatCurrency(txn.balanceAfterCents / 100)}
-                    </span>
-                  </div>
-                  {!txn.deletedAt && (
-                    <form action={adminDeleteTransaction} className="flex flex-col gap-2 lg:w-80 lg:flex-row lg:items-center lg:gap-2">
-                      <input type="hidden" name="transactionId" value={txn.id} />
-                      <input
-                        name="reason"
-                        placeholder="Reason (optional)"
-                        className="h-10 flex-1 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-rose-200/70 focus:ring-rose-200/30 focus:outline-none"
-                      />
-                      <button
-                        type="submit"
-                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-500 px-3 py-2 text-xs font-semibold text-white shadow-lg shadow-rose-500/20 transition hover:-translate-y-0.5 hover:bg-rose-400"
-                      >
-                        <Trash2 className="h-4 w-4" /> Delete
-                      </button>
-                    </form>
-                  )}
-                </div>
-              ))}
+            <div className="mt-4">
+              <TransactionsManager transactions={recentTxView} isDomainAdmin={isDomainAdmin} />
               {recentTx.length === 0 && <p className="py-4 text-slate-300">No transactions match this filter.</p>}
             </div>
           </div>
@@ -440,6 +416,50 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                 <h2 className="text-lg font-semibold text-white">Deleted transactions</h2>
                 <p className="text-sm text-slate-400">Kept for compliance while hidden from all user views.</p>
               </div>
+              {mostafaDebt && (
+                <div className="flex flex-col gap-2 rounded-2xl bg-rose-500/10 px-4 py-3 text-sm text-rose-100 ring-1 ring-rose-400/30">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-200">Mostafa debt</p>
+                      <p className="text-lg font-semibold">{formatCurrency(mostafaDebt.balanceCents / 100)}</p>
+                      <p className="text-[11px] text-rose-200">Acct #{mostafaDebt.id} • {mostafaDebt.user.name}</p>
+                    </div>
+                  </div>
+                  <form action={updateMostafaDebt} className="flex flex-col gap-2 text-[11px] text-white/80 md:flex-row md:items-center">
+                    <input
+                      name="amount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      required
+                      className="h-9 w-28 rounded-xl border border-white/15 bg-white/5 px-2 text-sm text-white placeholder:text-white/50 ring-1 ring-white/10 focus:border-white/60 focus:ring-white/20 focus:outline-none"
+                      placeholder="Amount"
+                    />
+                    <div className="flex gap-1">
+                      <SubmitWithOverlay
+                        label="Pay"
+                        pendingLabel="Updating..."
+                        overlayMessage="Updating Mostafa debt..."
+                        name="direction"
+                        value="pay"
+                        className="inline-flex items-center justify-center rounded-lg bg-emerald-400 px-3 py-2 text-[11px] font-bold text-slate-950 shadow-sm shadow-emerald-500/30 transition hover:-translate-y-0.5 hover:bg-emerald-300"
+                      >
+                        Pay
+                      </SubmitWithOverlay>
+                      <SubmitWithOverlay
+                        label="Add"
+                        pendingLabel="Updating..."
+                        overlayMessage="Updating Mostafa debt..."
+                        name="direction"
+                        value="add"
+                        className="inline-flex items-center justify-center rounded-lg bg-white/20 px-3 py-2 text-[11px] font-bold text-white ring-1 ring-white/30 transition hover:-translate-y-0.5 hover:bg-white/30"
+                      >
+                        Add
+                      </SubmitWithOverlay>
+                    </div>
+                  </form>
+                </div>
+              )}
               <form action={adminClearAuditTrail} className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 ring-1 ring-white/10 md:flex-row md:items-center md:gap-3">
                 <input
                   name="confirm"
@@ -447,13 +467,15 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                   placeholder="Type CLEAR to purge"
                   className="h-10 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-rose-200/70 focus:ring-rose-200/30 focus:outline-none"
                 />
-                <button
-                  type="submit"
+                <SubmitWithOverlay
+                  label="Clear audit log"
+                  pendingLabel="Clearing..."
+                  overlayMessage="Clearing audit log..."
                   disabled={!isDomainAdmin}
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-rose-500/25 transition hover:-translate-y-0.5 hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Trash2 className="h-4 w-4" /> Clear audit log
-                </button>
+                </SubmitWithOverlay>
               </form>
             </div>
             <div className="mt-4 divide-y divide-white/5">

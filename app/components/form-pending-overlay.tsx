@@ -12,9 +12,12 @@ type Props = {
   className?: string;
   disabled?: boolean;
   children?: ReactNode;
+  name?: string;
+  value?: string;
+  type?: "submit" | "button" | "reset";
 };
 
-export default function SubmitWithOverlay({ label, pendingLabel, overlayMessage, className = "", disabled, children }: Props) {
+export default function SubmitWithOverlay({ label, pendingLabel, overlayMessage, className = "", disabled, children, name, value, type = "submit" }: Props) {
   const { pending } = useFormStatus();
   const [mounted, setMounted] = useState(false);
 
@@ -41,7 +44,9 @@ export default function SubmitWithOverlay({ label, pendingLabel, overlayMessage,
         )}
 
       <button
-        type="submit"
+        type={type}
+        name={name}
+        value={value}
         disabled={isDisabled}
         aria-busy={pending}
         className={`${className} ${isDisabled ? "cursor-not-allowed opacity-70" : ""}`.trim()}
