@@ -111,7 +111,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     }),
   ] as const);
 
-  const totalBalanceCents = accounts.reduce((sum, a) => sum + a.balanceCents, 0);
+  const totalBalanceCents = accounts.reduce((sum: number, a: AccountWithCount) => sum + a.balanceCents, 0);
   const userAccount = accounts[0];
   const userAccountId = userAccount?.id;
   const hasAccounts = accounts.length > 0;
@@ -122,7 +122,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const suggestedNames: string[] = Array.from(
     new Set<string>(
       targetAccountNames
-        .flatMap((n) => [n.name, n.user.name, `${n.name} — ${n.user.name}`])
+        .flatMap((n: TargetAccount) => [n.name, n.user.name, `${n.name} — ${n.user.name}`])
         .filter(Boolean) as string[]
     )
   ).sort((a, b) => a.localeCompare(b));
@@ -135,8 +135,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   }
 
   const delinquentAccounts = accounts
-    .filter((a) => a.balanceCents < 0)
-    .map((a) => {
+    .filter((a: AccountWithCount) => a.balanceCents < 0)
+    .map((a: AccountWithCount) => {
       const anchor = anchorMap.get(a.id) ?? a.createdAt;
       const dueAt = new Date(anchor.getTime() + 30 * MS_PER_DAY);
       const msLeft = Math.max(0, dueAt.getTime() - Date.now());
@@ -159,8 +159,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       };
     });
 
-  const incomingPending = incomingRequests.filter((r) => r.status === "PENDING");
-  const outgoingPending = outgoingRequests.filter((r) => r.status === "PENDING");
+  const incomingPending = incomingRequests.filter((r: RequestRow) => r.status === "PENDING");
+  const outgoingPending = outgoingRequests.filter((r: RequestRow) => r.status === "PENDING");
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
@@ -219,7 +219,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 </div>
               </div>
               <div className="mt-6 grid gap-4 sm:grid-cols-3 auto-rows-fr">
-                {accounts.map((account) => (
+                {accounts.map((account: AccountWithCount) => (
                   <div
                     key={account.id}
                     className="flex min-h-[150px] flex-col justify-between rounded-2xl bg-white/5 p-4 ring-1 ring-white/5 transition hover:-translate-y-1 hover:ring-white/20"
@@ -255,7 +255,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                     </div>
                   </div>
                   <div className="space-y-3">
-                    {delinquentAccounts.map((acct) => (
+                    {delinquentAccounts.map((acct: typeof delinquentAccounts[number]) => (
                       <div
                         key={acct.id}
                         className="rounded-2xl border border-amber-400/30 bg-black/20 p-4 text-amber-50 shadow-inner shadow-amber-500/10"
@@ -311,7 +311,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 <p className="mt-3 text-sm text-slate-400">{t("noPendingRequests")}</p>
               ) : (
                 <div className="mt-4 space-y-3">
-                  {incomingPending.map((req) => {
+                  {incomingPending.map((req: RequestRow) => {
                     const isLoan = req.type === "LOAN";
                     const tone = isLoan ? "text-rose-200" : "text-emerald-200";
                     const bg = isLoan ? "bg-rose-500/10 border-rose-400/30" : "bg-emerald-500/10 border-emerald-400/30";
@@ -431,7 +431,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 </div>
                 <div className="mt-3 space-y-2 text-xs text-slate-300">
                   {outgoingPending.length === 0 && <p className="text-slate-400">{t("noOutgoing")}</p>}
-                  {outgoingPending.map((req) => (
+                  {outgoingPending.map((req: RequestRow) => (
                     <div key={req.id} className="flex items-center justify-between rounded-xl bg-white/5 px-3 py-2">
                       <div className="space-y-1">
                         <p className="font-semibold text-white">{req.type === "LOAN" ? t("loanRequest") : t("paymentRequest")}</p>
@@ -689,7 +689,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               <p className="text-sm text-slate-400">{t("latestTransactions")}</p>
             </div>
             <div className="mt-4 divide-y divide-white/5">
-              {transactions.map((txn) => (
+              {transactions.map((txn: TxnWithAccount) => (
                 <div key={txn.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm font-semibold text-white">{txn.description || txn.type}</p>

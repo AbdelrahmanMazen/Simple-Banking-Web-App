@@ -9,6 +9,7 @@ import { resolveLocale, translate } from "@/lib/i18n";
 
 type SearchParams = {
   saved?: string;
+  lang?: string;
 };
 
 export default async function AccountSettingsPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {

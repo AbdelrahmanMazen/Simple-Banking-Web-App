@@ -145,19 +145,19 @@ async function ensureOverdraftProgress(
       },
     });
 
-    const owner =
+    const ownerUser =
       account.user ||
       (await tx.account.findUnique({
         where: { id: account.id },
         select: { user: { select: { name: true, email: true } }, name: true },
-      }));
+      }))?.user;
 
-    if (owner?.user?.email) {
+    if (ownerUser?.email) {
       const dueAt = new Date(anchorDate.getTime() + 30 * MS_PER_DAY);
       await sendOverdraftWarningEmail({
-        to: owner.user.email,
-        userName: owner.user.name,
-        accountName: (owner as any).name || account.name || "Account",
+        to: ownerUser.email,
+        userName: ownerUser.name,
+        accountName: account.name || "Account",
         balanceCents: newBalance,
         anchorDate,
         dueAt,
@@ -212,7 +212,7 @@ export async function settleUserOverdrafts(userId: number) {
   });
 
   for (const acct of negativeAccounts) {
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const account = await tx.account.findUnique({
         where: { id: acct.id },
         select: { id: true, balanceCents: true, createdAt: true, name: true, user: { select: { name: true, email: true } } },
@@ -272,7 +272,7 @@ export async function settleLoanRequestPenalties(userId: number) {
     const penaltyDelta = Math.round(req.amountCents * 0.05 * daysElapsed);
     if (penaltyDelta <= 0) continue;
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const payer = await tx.account.findUnique({ where: { id: payerAccount.id }, select: { id: true, balanceCents: true, name: true, createdAt: true, user: { select: { name: true, email: true } } } });
       if (!payer) return;
 
@@ -676,7 +676,7 @@ export async function acceptMoneyRequest(formData: FormData) {
 
   await settleLoanRequestPenalties(user.id);
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const lockedReq = await tx.request.findUnique({ where: { id: req.id }, select: { id: true, status: true, targetUserId: true, amountCents: true, type: true, description: true } });
     if (!lockedReq || lockedReq.status !== "PENDING" || lockedReq.targetUserId !== user.id) {
       dashRedirect({ transferError: "Request not available" });
