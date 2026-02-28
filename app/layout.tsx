@@ -19,10 +19,42 @@ export default async function RootLayout({
 }>) {
   const cookieStore = await cookies();
   const locale = resolveLocale(cookieStore.get("lang")?.value || "en");
+  const ramadanEndsAt = Date.UTC(2026, 2, 20); // 20 Mar 2026
+  const showRamadan = Date.now() < ramadanEndsAt;
+  const baseFont = locale === "ar" ? tajawal.className : inter.className;
+  const baseBg = showRamadan
+    ? "bg-gradient-to-br from-emerald-950 via-slate-950 to-amber-900"
+    : "bg-slate-950";
 
   return (
     <html lang={locale} dir={locale === "ar" ? "rtl" : "ltr"}>
-      <body className={`${locale === "ar" ? tajawal.className : inter.className} antialiased bg-slate-950`}>{children}</body>
+      <body className={`${baseFont} antialiased ${baseBg}`}>
+        {showRamadan && (
+          <div className="pointer-events-none fixed inset-0 z-0 opacity-90">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(34,197,94,0.08),transparent_35%),radial-gradient(circle_at_80%_10%,rgba(248,180,0,0.08),transparent_30%),radial-gradient(circle_at_70%_70%,rgba(59,130,246,0.08),transparent_32%),radial-gradient(circle_at_15%_75%,rgba(234,179,8,0.06),transparent_38%)]" />
+            <div className="absolute left-1/2 top-6 h-24 w-24 -translate-x-1/2 rotate-12 rounded-full border border-amber-300/30 bg-amber-200/10 shadow-[0_0_40px_rgba(250,204,21,0.25)]" aria-hidden />
+            <div className="absolute right-12 top-16 h-3 w-16 rounded-full bg-emerald-300/30 blur-md" aria-hidden />
+            {/* Lantern glows */}
+            <div className="absolute left-[12%] top-28 h-16 w-16 -rotate-6 rounded-full bg-gradient-to-br from-amber-400/50 via-amber-200/30 to-transparent shadow-[0_0_30px_rgba(234,179,8,0.4)]" aria-hidden />
+            <div className="absolute right-[10%] top-44 h-14 w-14 rotate-3 rounded-full bg-gradient-to-br from-emerald-300/40 via-emerald-200/25 to-transparent shadow-[0_0_26px_rgba(74,222,128,0.35)]" aria-hidden />
+            <div className="absolute left-[55%] top-[55%] h-18 w-18 -rotate-2 rounded-full bg-gradient-to-br from-cyan-300/35 via-cyan-100/20 to-transparent shadow-[0_0_24px_rgba(103,232,249,0.3)]" aria-hidden />
+            <div className="absolute left-[22%] bottom-16 h-14 w-14 rotate-6 rounded-full bg-gradient-to-br from-amber-300/45 via-amber-100/20 to-transparent shadow-[0_0_26px_rgba(250,204,21,0.35)]" aria-hidden />
+            {/* Hanging lantern stems */}
+            <div className="absolute left-[12%] top-0 h-28 w-px bg-gradient-to-b from-amber-200/60 to-amber-200/0" aria-hidden />
+            <div className="absolute right-[10%] top-0 h-32 w-px bg-gradient-to-b from-emerald-200/60 to-emerald-200/0" aria-hidden />
+            <div className="absolute left-[55%] top-0 h-36 w-px bg-gradient-to-b from-cyan-200/60 to-cyan-200/0" aria-hidden />
+          </div>
+        )}
+        {showRamadan && (
+          <div className="fixed inset-x-0 top-0 z-40 flex justify-center p-3">
+            <div className="flex items-center gap-3 rounded-2xl bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-100 ring-1 ring-emerald-400/30 shadow-lg shadow-emerald-500/20">
+              <span className="inline-flex h-3 w-3 rounded-full bg-amber-300" aria-hidden />
+              <span>Ramadan Mubarak</span>
+            </div>
+          </div>
+        )}
+        <div className="relative z-10 min-h-screen">{children}</div>
+      </body>
     </html>
   );
 }

@@ -195,7 +195,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const outgoingPending = outgoingRequests.filter((r: RequestRow) => r.status === "PENDING");
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
+    <div className="min-h-screen bg-slate-950/60 text-white backdrop-blur-[2px]">
       <div className="absolute inset-0 -z-10 overflow-hidden opacity-60">
         <div className="floating-blur" />
         <div className="floating-blur delay-300 left-1/3" />
