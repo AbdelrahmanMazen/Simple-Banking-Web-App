@@ -501,6 +501,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                       sourceLabel: t("sourceLabel"),
                       mobileWallet: t("mobileWallet"),
                       card: t("card"),
+                      cardBankLabel: t("cardBankLabel"),
+                      cardBankPlaceholder: t("cardBankPlaceholder"),
                       amount: t("amount"),
                       amountPlaceholder: t("amountPlaceholder"),
                       description: t("description"),

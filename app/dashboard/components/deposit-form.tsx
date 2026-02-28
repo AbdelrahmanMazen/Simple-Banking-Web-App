@@ -13,6 +13,8 @@ type DepositStrings = {
   sourceLabel: string;
   mobileWallet: string;
   card: string;
+  cardBankLabel: string;
+  cardBankPlaceholder: string;
   amount: string;
   amountPlaceholder: string;
   description: string;
@@ -56,9 +58,36 @@ function maskWallet(walletDigits: string) {
 export default function DepositForm({ accountId, accountName, userName, hasAccounts, depositError, strings }: Props) {
   const [source, setSource] = useState<string>("Mobile Wallet");
   const [walletNumber, setWalletNumber] = useState<string>("");
+  const [cardBank, setCardBank] = useState<string>("");
   const walletDigits = useMemo(() => walletNumber.replace(/\D/g, ""), [walletNumber]);
   const provider = useMemo(() => detectProvider(walletDigits, strings), [walletDigits, strings]);
   const showWallet = source === "Mobile Wallet";
+  const showCard = source === "Credit/Debit Card";
+
+  const egyptBanks = useMemo(
+    () => [
+      "National Bank of Egypt (NBE)",
+      "Banque Misr",
+      "Banque du Caire",
+      "CIB",
+      "QNB Alahli",
+      "AlexBank",
+      "HSBC Egypt",
+      "Emirates NBD Egypt",
+      "ADIB Egypt",
+      "FAB Misr",
+      "Credit Agricole Egypt",
+      "Arab African International Bank",
+      "Arab Bank",
+      "Mashreq Egypt",
+      "Suez Canal Bank",
+      "Housing & Development Bank",
+      "Bank ABC Egypt",
+      "Export Development Bank of Egypt",
+      "Agricultural Bank of Egypt",
+    ],
+    []
+  );
 
   return (
     <div className="rounded-2xl border border-white/5 bg-white/5 p-5 ring-1 ring-white/10">
@@ -97,6 +126,28 @@ export default function DepositForm({ accountId, accountName, userName, hasAccou
               </option>
             </select>
           </label>
+
+          {showCard && (
+            <label className="space-y-2 text-xs font-medium text-slate-100">
+              {strings.cardBankLabel}
+              <select
+                name="cardBank"
+                value={cardBank}
+                onChange={(e) => setCardBank(e.target.value)}
+                required={showCard}
+                className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white ring-1 ring-white/5 focus:border-emerald-300/60 focus:ring-emerald-200/30 focus:outline-none"
+              >
+                <option value="" className="bg-slate-900 text-slate-400">
+                  {strings.cardBankPlaceholder}
+                </option>
+                {egyptBanks.map((bank) => (
+                  <option key={bank} value={bank} className="bg-slate-900">
+                    {bank}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
           {showWallet && (
             <label className="space-y-2 text-xs font-medium text-slate-100">

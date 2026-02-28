@@ -536,6 +536,7 @@ export async function deposit(formData: FormData) {
       description: z.string().optional(),
       source: z.enum(["Mobile Wallet", "Credit/Debit Card"]),
       walletNumber: z.string().trim().optional(),
+      cardBank: z.string().trim().optional(),
     })
     .safeParse({
       accountId: formData.get("accountId"),
@@ -543,6 +544,7 @@ export async function deposit(formData: FormData) {
       description: formData.get("description"),
       source: formData.get("source"),
       walletNumber: formData.get("walletNumber"),
+      cardBank: formData.get("cardBank"),
     });
 
   if (!parsed.success) {
@@ -550,11 +552,18 @@ export async function deposit(formData: FormData) {
     return;
   }
 
-  const { accountId, amount, description, source, walletNumber } = parsed.data;
+  const { accountId, amount, description, source, walletNumber, cardBank } = parsed.data;
   const walletDigits = (walletNumber || "").replace(/\D/g, "");
   const needsWallet = source === "Mobile Wallet";
+  const needsCardBank = source === "Credit/Debit Card";
   if (needsWallet && walletDigits.length !== 11) {
     dashRedirect({ depositError: "Wallet number must be 11 digits" });
+    return;
+  }
+
+  const selectedCardBank = (cardBank || "").trim();
+  if (needsCardBank && !selectedCardBank) {
+    dashRedirect({ depositError: "Select an issuing bank" });
     return;
   }
 
@@ -571,8 +580,12 @@ export async function deposit(formData: FormData) {
     : source;
 
   const maskedWallet = needsWallet ? `${walletDigits.slice(0, 3)}****${walletDigits.slice(-3)}` : "";
-  const sourceLabel = needsWallet ? `${provider} • ${maskedWallet}` : source;
-  const txDescription = description?.slice(0, 120) || (needsWallet ? `Deposit from ${provider}` : "Deposit");
+  const sourceLabel = needsWallet
+    ? `${provider} • ${maskedWallet}`
+    : needsCardBank && selectedCardBank
+      ? `${source} • ${selectedCardBank}`
+      : source;
+  const txDescription = description?.slice(0, 120) || (needsWallet ? `Deposit from ${provider}` : needsCardBank ? `Deposit via ${selectedCardBank}` : "Deposit");
   const deltaCents = Math.round(amount * 100);
   let accountName = "";
   let balanceAfterCents = 0;
