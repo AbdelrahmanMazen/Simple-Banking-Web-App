@@ -1,14 +1,15 @@
-import { AlertOctagon, ArrowDownToLine, ArrowUpFromLine, Clock3, HandCoins, Handshake, LogOut, Send, Sparkles, UserRound, Wallet, XCircle } from "lucide-react";
+import { AlertOctagon, ArrowUpFromLine, Clock3, HandCoins, Handshake, LogOut, Send, Sparkles, UserRound, Wallet, XCircle } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { acceptMoneyRequest, createMoneyRequest, deposit, rejectMoneyRequest, settleLoanRequestPenalties, settleUserOverdrafts, transfer, updateMostafaDebt, withdraw } from "@/app/actions/bankActions";
+import { acceptMoneyRequest, createMoneyRequest, rejectMoneyRequest, settleLoanRequestPenalties, settleUserOverdrafts, transfer, updateMostafaDebt, withdraw } from "@/app/actions/bankActions";
 import { signoutAction } from "@/app/actions/authActions";
 import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { resolveLocale, translate } from "@/lib/i18n";
 import LanguageToggle from "@/app/components/language-toggle";
 import SubmitWithOverlay from "@/app/components/form-pending-overlay";
+import DepositForm from "./components/deposit-form";
 
 function formatCurrency(amount: number) {
   return amount.toLocaleString("en-EG", {
@@ -485,79 +486,44 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               </form>
 
               <div className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-2xl border border-white/5 bg-white/5 p-5 ring-1 ring-white/10">
-                  <div className="flex items-center justify-between">
+                {hasAccounts && userAccountId ? (
+                  <DepositForm
+                    accountId={userAccountId}
+                    accountName={userAccount?.name ?? ""}
+                    userName={user.name}
+                    hasAccounts={hasAccounts}
+                    depositError={depositError}
+                    strings={{
+                      depositTitle: t("depositTitle"),
+                      instant: t("instant"),
+                      accountLabel: t("accountLabel"),
+                      linkedToProfile: t("linkedToProfile"),
+                      sourceLabel: t("sourceLabel"),
+                      mobileWallet: t("mobileWallet"),
+                      card: t("card"),
+                      amount: t("amount"),
+                      amountPlaceholder: t("amountPlaceholder"),
+                      description: t("description"),
+                      descriptionPlaceholderDeposit: t("descriptionPlaceholderDeposit"),
+                      depositHelper: t("depositHelper"),
+                      deposit: t("deposit"),
+                      depositPending: t("depositPending"),
+                      depositOverlay: t("depositOverlay"),
+                      walletNumber: t("walletNumber"),
+                      walletNumberPlaceholder: t("walletNumberPlaceholder"),
+                      walletProviderHint: t("walletProviderHint"),
+                      providerVodafone: t("providerVodafone"),
+                      providerWe: t("providerWe"),
+                      providerOrange: t("providerOrange"),
+                      providerEtisalat: t("providerEtisalat"),
+                    }}
+                  />
+                ) : (
+                  <div className="rounded-2xl border border-white/5 bg-white/5 p-5 ring-1 ring-white/10">
                     <h3 className="text-base font-semibold text-white">{t("depositTitle")}</h3>
-                    <div className="rounded-full bg-emerald-500/20 px-3 py-1 text-[11px] font-semibold text-emerald-200">
-                      {t("instant")}
-                    </div>
+                    <p className="mt-2 text-sm text-slate-300">{t("noAccountsAvailable")}</p>
                   </div>
-                  <form action={deposit} className="mt-3 space-y-3">
-                    <div className="grid grid-cols-1 gap-3">
-                      <label className="space-y-2 text-xs font-medium text-slate-100">
-                        {t("accountLabel")}
-                        <div className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white ring-1 ring-white/5 focus-within:border-emerald-300/60 focus-within:ring-emerald-200/30">
-                          <div className="flex h-full items-center justify-between text-xs text-slate-200">
-                            <span className="truncate">{userAccount?.name ?? user.name ?? t("accountLabel")}</span>
-                            <span className="text-[11px] text-slate-400">{t("linkedToProfile")}</span>
-                          </div>
-                          {userAccountId && <input type="hidden" name="accountId" value={userAccountId} />}
-                        </div>
-                      </label>
-                      <label className="space-y-2 text-xs font-medium text-slate-100">
-                        {t("sourceLabel")}
-                        <select
-                          name="source"
-                          defaultValue="Mobile Wallet"
-                          className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white ring-1 ring-white/5 focus:border-emerald-300/60 focus:ring-emerald-200/30 focus:outline-none"
-                        >
-                          <option value="Mobile Wallet" className="bg-slate-900">{t("mobileWallet")}</option>
-                          <option value="Credit/Debit Card" className="bg-slate-900">{t("card")}</option>
-                        </select>
-                      </label>
-                      <label className="space-y-2 text-xs font-medium text-slate-100">
-                        {t("amount")}
-                        <input
-                          name="amount"
-                          type="number"
-                          min="0.01"
-                          step="0.01"
-                          required
-                          className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-emerald-300/60 focus:ring-emerald-200/30 focus:outline-none"
-                          placeholder={t("amountPlaceholder")}
-                          inputMode="decimal"
-                        />
-                      </label>
-                      <label className="space-y-2 text-xs font-medium text-slate-100">
-                        {t("description")}
-                        <input
-                          name="description"
-                          className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-emerald-300/60 focus:ring-emerald-200/30 focus:outline-none"
-                          placeholder={t("descriptionPlaceholderDeposit")}
-                        />
-                      </label>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
-                      <ArrowDownToLine className="h-4 w-4 text-emerald-300" /> {t("depositHelper")}
-                    </div>
-                    {depositError && (
-                      <div className="rounded-xl border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-100 shadow-inner shadow-rose-500/20">
-                        {depositError}
-                      </div>
-                    )}
-                    <div className="flex justify-end">
-                      <SubmitWithOverlay
-                        label={t("deposit")}
-                        pendingLabel={t("depositPending")}
-                        overlayMessage={t("depositOverlay")}
-                        disabled={!hasAccounts}
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 py-2 text-xs font-semibold text-slate-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-                      >
-                        <ArrowDownToLine className="h-4 w-4" /> {t("deposit")}
-                      </SubmitWithOverlay>
-                    </div>
-                  </form>
-                </div>
+                )}
 
                 <div className="rounded-2xl border border-white/5 bg-white/5 p-5 ring-1 ring-white/10">
                   <div className="flex items-center justify-between">

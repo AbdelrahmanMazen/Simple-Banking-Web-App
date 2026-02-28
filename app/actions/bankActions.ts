@@ -535,25 +535,51 @@ export async function deposit(formData: FormData) {
       amount: moneySchema,
       description: z.string().optional(),
       source: z.enum(["Mobile Wallet", "Credit/Debit Card"]),
+      walletNumber: z.string().trim().optional(),
     })
     .safeParse({
       accountId: formData.get("accountId"),
       amount: formData.get("amount"),
       description: formData.get("description"),
       source: formData.get("source"),
+      walletNumber: formData.get("walletNumber"),
     });
 
   if (!parsed.success) {
     dashRedirect({ depositError: "Invalid deposit request" });
+    return;
   }
 
-  const { accountId, amount, description, source } = parsed.data;
+  const { accountId, amount, description, source, walletNumber } = parsed.data;
+  const walletDigits = (walletNumber || "").replace(/\D/g, "");
+  const needsWallet = source === "Mobile Wallet";
+  if (needsWallet && walletDigits.length !== 11) {
+    dashRedirect({ depositError: "Wallet number must be 11 digits" });
+    return;
+  }
+
+  const provider = needsWallet
+    ? walletDigits.startsWith("010")
+      ? "Vodafone Cash"
+      : walletDigits.startsWith("015")
+        ? "WE Pay"
+        : walletDigits.startsWith("012")
+          ? "Orange Cash"
+          : walletDigits.startsWith("011")
+            ? "E& Cash"
+            : "Mobile Wallet"
+    : source;
+
+  const maskedWallet = needsWallet ? `${walletDigits.slice(0, 3)}****${walletDigits.slice(-3)}` : "";
+  const sourceLabel = needsWallet ? `${provider} • ${maskedWallet}` : source;
+  const txDescription = description?.slice(0, 120) || (needsWallet ? `Deposit from ${provider}` : "Deposit");
   const deltaCents = Math.round(amount * 100);
   let accountName = "";
   let balanceAfterCents = 0;
   const user = await getCurrentUser();
   if (!user || !user.isVerified) {
     dashRedirect({ depositError: "You must be signed in and verified" });
+    return;
   }
 
   try {
@@ -582,9 +608,9 @@ export async function deposit(formData: FormData) {
           accountId: account.id,
           type: "DEPOSIT",
           amountCents: deltaCents,
-          description: description?.slice(0, 120) || "Deposit",
+          description: txDescription,
           balanceAfterCents: nextBalance,
-          source,
+          source: sourceLabel,
         },
       });
     });
@@ -606,7 +632,7 @@ export async function deposit(formData: FormData) {
     amountCents: deltaCents,
     balanceAfterCents,
     description,
-    source,
+    source: sourceLabel,
     timestamp: new Date(),
   });
 }
