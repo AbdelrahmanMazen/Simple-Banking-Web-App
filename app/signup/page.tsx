@@ -1,12 +1,19 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import LanguageToggle from "@/app/components/language-toggle";
 import { signoutAction, signupAction } from "@/app/actions/authActions";
 import { getCurrentUser } from "@/lib/auth";
+import { resolveLocale, translate } from "@/lib/i18n";
 
 export default async function SignupPage() {
   const user = await getCurrentUser();
   if (user?.isVerified) redirect("/dashboard");
   const unverifiedUser = user && !user.isVerified ? user : null;
+
+  const cookieStore = await cookies();
+  const locale = resolveLocale(cookieStore.get("lang")?.value || "en");
+  const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) => translate(locale, key, params);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
@@ -21,35 +28,38 @@ export default async function SignupPage() {
             <div className="flex items-center justify-between gap-4">
               <div className="space-y-2">
                 <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-100 ring-1 ring-emerald-400/30">
-                  <span className="h-2 w-2 rounded-full bg-emerald-300" /> Secure signup
+                  <span className="h-2 w-2 rounded-full bg-emerald-300" /> {t("authSecureBadge")}
                 </div>
-                <p className="text-sm uppercase tracking-[0.2em] text-slate-400">SimpleBank</p>
-                <h1 className="text-3xl font-semibold text-white">Create account</h1>
-                <p className="mt-1 text-slate-300">Sign up to start managing balances and transactions. We’ll email a 6-digit code to verify you.</p>
+                <p className="text-sm uppercase tracking-[0.2em] text-slate-400">{t("simpleBank")}</p>
+                <h1 className="text-3xl font-semibold text-white">{t("authSignupTitle")}</h1>
+                <p className="mt-1 text-slate-300">{t("authSignupSubtitle")}</p>
               </div>
               <Link
                 href="/"
                 className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/20 transition hover:-translate-y-0.5 hover:bg-white/20"
               >
-                Already have an account?
+                {t("authSignupHaveAccount")}
               </Link>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <LanguageToggle locale={locale} />
             </div>
             {unverifiedUser ? (
               <div className="mt-6 space-y-4 rounded-2xl border border-amber-300/30 bg-amber-500/10 p-4 text-sm text-amber-100">
-                <p className="font-semibold">You are signed in as {unverifiedUser.email}, but the email is not verified.</p>
+                <p className="font-semibold">{t("authUnverifiedNotice", { email: unverifiedUser.email })}</p>
                 <div className="flex flex-wrap gap-3">
                   <Link
                     href={`/verify?email=${encodeURIComponent(unverifiedUser.email)}`}
                     className="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-4 py-2 text-xs font-semibold text-slate-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 hover:bg-emerald-400"
                   >
-                    Go to verification
+                    {t("authGoVerify")}
                   </Link>
                   <form action={signoutAction}>
                     <button
                       type="submit"
                       className="inline-flex items-center justify-center rounded-xl bg-white/10 px-4 py-2 text-xs font-semibold text-white ring-1 ring-white/20 transition hover:-translate-y-0.5 hover:bg-white/20"
                     >
-                      Sign out to switch account
+                      {t("authSignOutSwitch")}
                     </button>
                   </form>
                 </div>
@@ -57,7 +67,7 @@ export default async function SignupPage() {
             ) : (
               <form action={signupAction} className="mt-6 space-y-4">
                 <label className="space-y-2 text-sm text-slate-200">
-                  Name
+                  {t("authName")}
                   <input
                     name="name"
                     required
@@ -66,7 +76,7 @@ export default async function SignupPage() {
                   />
                 </label>
                 <label className="space-y-2 text-sm text-slate-200">
-                  Email
+                  {t("authEmail")}
                   <input
                     name="email"
                     type="email"
@@ -76,7 +86,7 @@ export default async function SignupPage() {
                   />
                 </label>
                 <label className="space-y-2 text-sm text-slate-200">
-                  Password
+                  {t("authPassword")}
                   <input
                     name="password"
                     type="password"
@@ -89,9 +99,9 @@ export default async function SignupPage() {
                   type="submit"
                   className="w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 hover:bg-emerald-400"
                 >
-                  Create account
+                  {t("authCreateAccount")}
                 </button>
-                <p className="text-xs text-slate-400">After submitting, check your inbox for a verification code.</p>
+                <p className="text-xs text-slate-400">{t("authVerifyHint")}</p>
               </form>
             )}
           </div>

@@ -1,8 +1,11 @@
 import { Prisma } from "@prisma/client";
 import { Funnel, History, ListFilter, ShieldCheck, Trash2, Users, Wrench } from "lucide-react";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import LanguageToggle from "@/app/components/language-toggle";
 import { adminClearAuditTrail, adminDeleteUser, adminUpdateAccount, updateMostafaDebt } from "@/app/actions/bankActions";
 import { getCurrentUser } from "@/lib/auth";
+import { resolveLocale, translate } from "@/lib/i18n";
 import prisma from "@/lib/prisma";
 import SubmitWithOverlay from "@/app/components/form-pending-overlay";
 import TransactionsManager from "./transactions-manager";
@@ -41,10 +44,14 @@ type AdminSearchParams = {
   type?: string;
   q?: string;
   includeDeleted?: string;
+  lang?: string;
 };
 
 export default async function AdminPage({ searchParams }: { searchParams?: Promise<AdminSearchParams> }) {
   const resolvedParams = (await searchParams) ?? {};
+  const cookieStore = await cookies();
+  const locale = resolveLocale(resolvedParams.lang ?? cookieStore.get("lang")?.value ?? "en");
+  const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) => translate(locale, key, params);
   const filterType = resolvedParams.type?.toUpperCase();
   const includeDeleted = resolvedParams.includeDeleted === "1";
   const query = resolvedParams.q?.trim();
@@ -137,43 +144,44 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
         <div className="floating-blur delay-300 left-1/3" />
         <div className="floating-blur delay-500 left-2/3" />
       </div>
-      <main className="mx-auto flex max-w-6xl flex-col gap-10 px-6 py-14">
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <main className="mx-auto flex max-w-6xl flex-col gap-10 px-4 py-12 sm:px-6">
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
-            <p className="text-sm uppercase tracking-[0.2em] text-slate-400">Admin</p>
-            <h1 className="text-3xl font-semibold text-white">System overview</h1>
-            <p className="text-slate-400">Manage users, accounts, and monitor recent activity.</p>
+            <p className="text-sm uppercase tracking-[0.2em] text-slate-400">{t("adminLabel")}</p>
+            <h1 className="text-3xl font-semibold text-white">{t("adminSystemOverview")}</h1>
+            <p className="text-slate-400">{t("adminSystemSubtitle")}</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-3">
             <div className="inline-flex items-center gap-2 rounded-xl bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-200 ring-1 ring-emerald-400/30">
-              <ShieldCheck className="h-4 w-4" /> Admin access
+              <ShieldCheck className="h-4 w-4" /> {t("adminAccess")}
             </div>
             <div className="rounded-2xl bg-white/5 px-4 py-3 text-xs text-slate-300 ring-1 ring-white/10">
-              Active tx: {totalActiveTransactions.toLocaleString()} • Deleted tx: {totalDeletedTransactions.toLocaleString()}
+              {t("adminActiveDeleted", { active: totalActiveTransactions.toLocaleString(), deleted: totalDeletedTransactions.toLocaleString() })}
             </div>
+            <LanguageToggle locale={locale} />
           </div>
         </header>
 
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="glass-panel rounded-2xl p-5 ring-1 ring-white/10">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Users</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{t("adminUsersLabel")}</p>
             <p className="mt-2 text-3xl font-semibold text-white">{totalUsers}</p>
-            <p className="text-xs text-slate-500">Unique verified customers</p>
+            <p className="text-xs text-slate-500">{t("adminUsersHint")}</p>
           </div>
           <div className="glass-panel rounded-2xl p-5 ring-1 ring-white/10">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Accounts</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{t("adminAccountsLabel")}</p>
             <p className="mt-2 text-3xl font-semibold text-white">{totalAccounts}</p>
-            <p className="text-xs text-slate-500">Active bank accounts</p>
+            <p className="text-xs text-slate-500">{t("adminAccountsHint")}</p>
           </div>
           <div className="glass-panel rounded-2xl p-5 ring-1 ring-white/10">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Transactions</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{t("adminTransactionsLabel")}</p>
             <p className="mt-2 text-3xl font-semibold text-white">{totalActiveTransactions}</p>
-            <p className="text-xs text-slate-500">Soft-deleted: {totalDeletedTransactions}</p>
+            <p className="text-xs text-slate-500">{t("adminTransactionsHint", { count: totalDeletedTransactions })}</p>
           </div>
           <div className="glass-panel rounded-2xl p-5 ring-1 ring-white/10">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Balance</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{t("adminBalanceLabel")}</p>
             <p className="mt-2 text-3xl font-semibold text-white">{formatCurrency(totalBalanceCents / 100)}</p>
-            <p className="text-xs text-slate-500">System-wide holdings</p>
+            <p className="text-xs text-slate-500">{t("adminBalanceHint")}</p>
           </div>
         </section>
 
@@ -181,18 +189,18 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
           <div className="rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-rose-500/10 to-white/0 p-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="text-sm text-rose-200">Danger zone</p>
-                <h2 className="text-lg font-semibold text-white">Delete user</h2>
-                <p className="text-sm text-slate-300">Removes user, accounts, transactions, sessions, and requests.</p>
+                <p className="text-sm text-rose-200">{t("dangerZone")}</p>
+                <h2 className="text-lg font-semibold text-white">{t("deleteUserTitle")}</h2>
+                <p className="text-sm text-slate-300">{t("deleteUserDesc")}</p>
               </div>
               <div className="rounded-xl bg-white/5 px-3 py-2 text-xs text-slate-300 ring-1 ring-white/10">
-                {domainAdminEmail ? `Only ${domainAdminEmail} can execute.` : "Admins only."}
+                {domainAdminEmail ? t("domainAdminOnly", { email: domainAdminEmail }) : t("adminsOnly")}
               </div>
             </div>
 
             <form action={adminDeleteUser} className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
               <label className="space-y-2 text-sm font-medium text-slate-100 lg:col-span-1">
-                User ID
+                {t("userIdLabel")}
                 <input
                   name="userId"
                   type="number"
@@ -203,7 +211,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                 />
               </label>
               <label className="space-y-2 text-sm font-medium text-slate-100 lg:col-span-2">
-                Reason (optional)
+                {t("reasonOptionalLabel")}
                 <input
                   name="reason"
                   className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-3 text-base text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-rose-200/70 focus:ring-rose-200/30 focus:outline-none"
@@ -211,15 +219,15 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                 />
               </label>
               <div className="lg:col-span-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-                <p className="text-xs text-rose-200">Cannot delete domain admin or yourself.</p>
+                <p className="text-xs text-rose-200">{t("deleteProtection")}</p>
                 <SubmitWithOverlay
-                  label="Delete user"
-                  pendingLabel="Deleting..."
-                  overlayMessage="Deleting user..."
+                  label={t("deleteUserCta")}
+                  pendingLabel={t("deleteUserCta")}
+                  overlayMessage={t("deleteUserCta")}
                   disabled={!isDomainAdmin}
-                  className="inline-flex items-center gap-2 rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-rose-500/25 transition hover:-translate-y-0.5 hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-rose-500/25 transition hover:-translate-y-0.5 hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                 >
-                  <Trash2 className="h-4 w-4" /> Delete user
+                  <Trash2 className="h-4 w-4" /> {t("deleteUserCta")}
                 </SubmitWithOverlay>
               </div>
             </form>
@@ -230,23 +238,23 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
           <div className="rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-white/5 to-white/0 p-6">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p className="text-sm text-slate-300">Domain admin tools</p>
-                <h2 className="text-lg font-semibold text-white">Manage any account</h2>
-                <p className="text-sm text-slate-400">Edit balances, names, ownership, and creation dates.</p>
+                <p className="text-sm text-slate-300">{t("adminToolsTitle")}</p>
+                <h2 className="text-lg font-semibold text-white">{t("adminToolsSubtitle")}</h2>
+                <p className="text-sm text-slate-400">{t("adminToolsDesc")}</p>
               </div>
               <div className="flex items-center gap-2">
                 <div className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/15">
-                  <Wrench className="h-4 w-4" /> Restricted
+                  <Wrench className="h-4 w-4" /> {t("restricted")}
                 </div>
                 <div className="rounded-xl bg-white/5 px-3 py-2 text-xs text-slate-300 ring-1 ring-white/10">
-                  {domainAdminEmail ? `Only ${domainAdminEmail} can execute.` : "Admins only."}
+                  {domainAdminEmail ? t("domainAdminOnly", { email: domainAdminEmail }) : t("adminsOnly")}
                 </div>
               </div>
             </div>
 
             <form action={adminUpdateAccount} className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
               <label className="space-y-2 text-sm font-medium text-slate-100">
-                Account ID
+                {t("accountIdLabel")}
                 <input
                   name="accountId"
                   type="number"
@@ -256,7 +264,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                 />
               </label>
               <label className="space-y-2 text-sm font-medium text-slate-100">
-                New balance (EGP)
+                {t("newBalanceLabel")}
                 <input
                   name="balance"
                   type="number"
@@ -267,7 +275,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                 />
               </label>
               <label className="space-y-2 text-sm font-medium text-slate-100">
-                New name
+                {t("newNameLabel")}
                 <input
                   name="name"
                   className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-3 text-base text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-emerald-200/70 focus:ring-emerald-200/30 focus:outline-none"
@@ -275,7 +283,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                 />
               </label>
               <label className="space-y-2 text-sm font-medium text-slate-100">
-                Reassign to user ID
+                {t("reassignUserLabel")}
                 <input
                   name="ownerUserId"
                   type="number"
@@ -285,7 +293,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                 />
               </label>
               <label className="space-y-2 text-sm font-medium text-slate-100 md:col-span-2">
-                Created at (ISO or date string)
+                {t("createdAtLabel")}
                 <input
                   name="createdAt"
                   className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-3 text-base text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-emerald-200/70 focus:ring-emerald-200/30 focus:outline-none"
@@ -293,25 +301,25 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                 />
               </label>
               <label className="space-y-2 text-sm font-medium text-slate-100 md:col-span-2">
-                Description / audit note
+                {t("auditNoteLabel")}
                 <input
                   name="description"
                   className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-3 text-base text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-emerald-200/70 focus:ring-emerald-200/30 focus:outline-none"
                   placeholder="Why this change is made"
                 />
               </label>
-              <div className="md:col-span-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div className="md:col-span-2 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <p className="text-xs text-slate-400">
-                  {domainAdminEmail ? `Only the domain admin (${domainAdminEmail}) can run these actions.` : "Restricted to admins only."}
+                  {domainAdminEmail ? t("adminRestrictedNote", { email: domainAdminEmail }) : t("adminsOnlyShort")}
                 </p>
                 <SubmitWithOverlay
-                  label="Apply changes"
-                  pendingLabel="Applying..."
-                  overlayMessage="Updating account..."
+                  label={t("applyChanges")}
+                  pendingLabel={t("applyChanges")}
+                  overlayMessage={t("applyChanges")}
                   disabled={!isDomainAdmin}
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
-                  <Wrench className="h-4 w-4" /> Apply changes
+                  <Wrench className="h-4 w-4" /> {t("applyChanges")}
                 </SubmitWithOverlay>
               </div>
             </form>
@@ -322,12 +330,12 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
           <div className="rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-white/5 to-white/0 p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-300">Accounts</p>
-                <h2 className="text-lg font-semibold text-white">Top recent accounts</h2>
+                <p className="text-sm text-slate-300">{t("accountsTitle")}</p>
+                <h2 className="text-lg font-semibold text-white">{t("accountsSubtitle")}</h2>
               </div>
               <Users className="h-5 w-5 text-emerald-200" />
             </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {accounts.map((acct) => (
                 <div key={acct.id} className="rounded-2xl border border-white/5 bg-white/5 px-4 py-3 ring-1 ring-white/10">
                   <div className="flex items-center justify-between">
@@ -340,7 +348,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                     </span>
                   </div>
                   <p className="mt-2 text-lg font-semibold text-white">{formatCurrency(acct.balanceCents / 100)}</p>
-                  <p className="text-xs text-slate-500">Account #{acct.id}</p>
+                  <p className="text-xs text-slate-500">{t("account") } #{acct.id}</p>
                 </div>
               ))}
             </div>
@@ -352,23 +360,23 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <div className="flex items-center gap-2 text-sm text-slate-300">
-                  <History className="h-4 w-4" /> Transaction history
+                  <History className="h-4 w-4" /> {t("recentTxTitle")}
                 </div>
-                <h2 className="text-lg font-semibold text-white">Recent transactions</h2>
-                <p className="text-sm text-slate-400">Filter, search, and clear transactions. Deleted entries disappear from user history but remain auditable here.</p>
+                <h2 className="text-lg font-semibold text-white">{t("recentTxTitle")}</h2>
+                <p className="text-sm text-slate-400">{t("recentTxSubtitle")}</p>
               </div>
-              <form className="flex w-full flex-col gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 ring-1 ring-white/10 lg:w-auto lg:flex-row lg:items-center lg:gap-3" method="get">
+              <form className="flex w-full flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 ring-1 ring-white/10 md:flex-row md:flex-wrap md:items-center md:gap-3 lg:w-auto" method="get">
                 <div className="flex items-center gap-2 text-xs uppercase tracking-[0.15em] text-slate-400">
-                  <ListFilter className="h-4 w-4" /> Filters
+                  <ListFilter className="h-4 w-4" /> {t("filtersLabel")}
                 </div>
                 <select
                   name="type"
                   defaultValue={filterType ?? ""}
-                  className="h-10 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-emerald-200/70 focus:ring-emerald-200/30 focus:outline-none"
+                  className="h-10 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-emerald-200/70 focus:ring-emerald-200/30 focus:outline-none md:w-auto md:min-w-[180px]"
                 >
-                  <option value="">All types</option>
-                  <option value="DEPOSIT">Deposit</option>
-                  <option value="WITHDRAW">Withdraw</option>
+                  <option value="">{t("allTypes")}</option>
+                  <option value="DEPOSIT">{t("depositTitle")}</option>
+                  <option value="WITHDRAW">{t("withdrawTitle")}</option>
                   <option value="TRANSFER_IN">Transfer In</option>
                   <option value="TRANSFER_OUT">Transfer Out</option>
                   <option value="OVERDRAFT_ALERT">Overdraft Alert</option>
@@ -381,7 +389,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                   name="q"
                   defaultValue={query ?? ""}
                   placeholder="Search by account, user, source, description"
-                  className="h-10 min-w-[240px] flex-1 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-emerald-200/70 focus:ring-emerald-200/30 focus:outline-none"
+                  className="h-10 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-emerald-200/70 focus:ring-emerald-200/30 focus:outline-none md:w-56"
                 />
                 <label className="flex items-center gap-2 text-xs font-semibold text-slate-200">
                   <input
@@ -391,36 +399,36 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                     defaultChecked={includeDeleted}
                     className="h-4 w-4 rounded border-white/20 bg-white/10 text-emerald-400 focus:ring-emerald-300"
                   />
-                  Include deleted
+                  {t("includeDeleted")}
                 </label>
                 <button
                   type="submit"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 hover:bg-emerald-400"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 hover:bg-emerald-400 md:w-auto"
                 >
-                  <Funnel className="h-4 w-4" /> Apply
+                  <Funnel className="h-4 w-4" /> {t("applyFilters")}
                 </button>
               </form>
             </div>
             <div className="mt-4">
-              <TransactionsManager transactions={recentTxView} isDomainAdmin={isDomainAdmin} />
-              {recentTx.length === 0 && <p className="py-4 text-slate-300">No transactions match this filter.</p>}
+              <TransactionsManager transactions={recentTxView} isDomainAdmin={isDomainAdmin} locale={locale} />
+              {recentTx.length === 0 && <p className="py-4 text-slate-300">{t("noTransactionsMatch")}</p>}
             </div>
           </div>
         </section>
 
         <section className="glass-panel rounded-3xl p-[1.5px] shadow-2xl shadow-black/30">
           <div className="rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-rose-500/5 to-white/0 p-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
-                <p className="text-sm text-rose-200">Audit trail</p>
-                <h2 className="text-lg font-semibold text-white">Deleted transactions</h2>
-                <p className="text-sm text-slate-400">Kept for compliance while hidden from all user views.</p>
+                <p className="text-sm text-rose-200">{t("auditTrailTitle")}</p>
+                <h2 className="text-lg font-semibold text-white">{t("auditTrailSubtitle")}</h2>
+                <p className="text-sm text-slate-400">{t("auditTrailDesc")}</p>
               </div>
               {mostafaDebt && (
                 <div className="flex flex-col gap-2 rounded-2xl bg-rose-500/10 px-4 py-3 text-sm text-rose-100 ring-1 ring-rose-400/30">
                   <div className="flex items-center justify-between gap-4">
                     <div className="space-y-1">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-200">Mostafa debt</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-200">{t("mostafaDebtTitle")}</p>
                       <p className="text-lg font-semibold">{formatCurrency(mostafaDebt.balanceCents / 100)}</p>
                       <p className="text-[11px] text-rose-200">Acct #{mostafaDebt.id} • {mostafaDebt.user.name}</p>
                     </div>
@@ -460,21 +468,21 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                   </form>
                 </div>
               )}
-              <form action={adminClearAuditTrail} className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 ring-1 ring-white/10 md:flex-row md:items-center md:gap-3">
+              <form action={adminClearAuditTrail} className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 ring-1 ring-white/10 md:flex-row md:items-center md:gap-3 md:self-start">
                 <input
                   name="confirm"
                   required
-                  placeholder="Type CLEAR to purge"
+                  placeholder={t("clearAuditPlaceholder")}
                   className="h-10 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-rose-200/70 focus:ring-rose-200/30 focus:outline-none"
                 />
                 <SubmitWithOverlay
-                  label="Clear audit log"
-                  pendingLabel="Clearing..."
-                  overlayMessage="Clearing audit log..."
+                  label={t("clearAuditCta")}
+                  pendingLabel={t("clearAuditCta")}
+                  overlayMessage={t("clearAuditOverlay")}
                   disabled={!isDomainAdmin}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-rose-500/25 transition hover:-translate-y-0.5 hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-rose-500/25 transition hover:-translate-y-0.5 hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-60 md:w-auto"
                 >
-                  <Trash2 className="h-4 w-4" /> Clear audit log
+                  <Trash2 className="h-4 w-4" /> {t("clearAuditCta")}
                 </SubmitWithOverlay>
               </form>
             </div>

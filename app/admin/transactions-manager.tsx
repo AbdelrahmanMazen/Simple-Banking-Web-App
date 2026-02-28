@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { AlertCircle, Trash2 } from "lucide-react";
 import SubmitWithOverlay from "@/app/components/form-pending-overlay";
 import { adminDeleteTransaction, adminDeleteTransactionsBulk } from "@/app/actions/bankActions";
+import { Locale, translate } from "@/lib/i18n";
 
 type TxnView = {
   id: number;
@@ -22,6 +23,7 @@ type TxnView = {
 type Props = {
   transactions: TxnView[];
   isDomainAdmin: boolean;
+  locale: Locale;
 };
 
 function formatCurrency(amount: number) {
@@ -32,7 +34,8 @@ function formatCurrency(amount: number) {
   });
 }
 
-export default function TransactionsManager({ transactions, isDomainAdmin }: Props) {
+export default function TransactionsManager({ transactions, isDomainAdmin, locale }: Props) {
+  const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) => translate(locale, key, params);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
   const allSelected = selectedIds.length > 0 && selectedIds.length === transactions.length;
@@ -63,29 +66,29 @@ export default function TransactionsManager({ transactions, isDomainAdmin }: Pro
               checked={allSelected}
               onChange={toggleAll}
             />
-            Select all ({transactions.length})
+            {t("selectAll")} ({transactions.length})
           </label>
           <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-200">
-            {selectedCount} selected
+            {t("selectedCount", { count: selectedCount })}
           </span>
         </div>
         <form action={adminDeleteTransactionsBulk} className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
           <input
             name="reason"
-            placeholder="Reason (optional)"
-            className="h-10 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-rose-200/70 focus:ring-rose-200/30 focus:outline-none"
+            placeholder={t("reasonOptionalLabel")}
+            className="h-10 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-rose-200/70 focus:ring-rose-200/30 focus:outline-none md:w-64"
           />
           {selectedIds.map((id) => (
             <input key={id} type="hidden" name="transactionIds" value={id} />
           ))}
           <SubmitWithOverlay
-            label="Delete selected"
-            pendingLabel="Deleting..."
-            overlayMessage="Deleting selected transactions..."
+            label={t("deleteSelected")}
+            pendingLabel={t("deleteSelected")}
+            overlayMessage={t("deleteSelectedOverlay")}
             disabled={!isDomainAdmin || selectedCount === 0}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-rose-500/20 transition hover:-translate-y-0.5 hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-rose-500/20 transition hover:-translate-y-0.5 hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-60 md:w-auto"
           >
-            <Trash2 className="h-4 w-4" /> Delete selected
+            <Trash2 className="h-4 w-4" /> {t("deleteSelected")}
           </SubmitWithOverlay>
         </form>
       </div>
@@ -112,7 +115,7 @@ export default function TransactionsManager({ transactions, isDomainAdmin }: Pro
                       <p className="text-sm font-semibold text-white">{txn.description || txn.type}</p>
                       {isDeleted && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-rose-200 ring-1 ring-rose-400/30">
-                          <AlertCircle className="h-3.5 w-3.5" /> Deleted
+                          <AlertCircle className="h-3.5 w-3.5" /> {t("deletedBadge")}
                         </span>
                       )}
                     </div>
@@ -145,16 +148,16 @@ export default function TransactionsManager({ transactions, isDomainAdmin }: Pro
                   <input type="hidden" name="transactionId" value={txn.id} />
                   <input
                     name="reason"
-                    placeholder="Reason (optional)"
+                    placeholder={t("reasonOptionalLabel")}
                     className="h-10 flex-1 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-rose-200/70 focus:ring-rose-200/30 focus:outline-none"
                   />
                   <SubmitWithOverlay
-                    label="Delete"
-                    pendingLabel="Deleting..."
-                    overlayMessage="Deleting transaction..."
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-500 px-3 py-2 text-xs font-semibold text-white shadow-lg shadow-rose-500/20 transition hover:-translate-y-0.5 hover:bg-rose-400"
+                    label={t("delete") ?? "Delete"}
+                    pendingLabel={t("delete") ?? "Delete"}
+                    overlayMessage={t("deleteTxnOverlay")}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-rose-500 px-3 py-2 text-xs font-semibold text-white shadow-lg shadow-rose-500/20 transition hover:-translate-y-0.5 hover:bg-rose-400 md:w-auto"
                   >
-                    <Trash2 className="h-4 w-4" /> Delete
+                    <Trash2 className="h-4 w-4" /> {t("delete") ?? "Delete"}
                   </SubmitWithOverlay>
                 </form>
               )}
