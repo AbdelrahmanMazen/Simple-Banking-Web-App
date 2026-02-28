@@ -10,6 +10,7 @@ import { resolveLocale, translate } from "@/lib/i18n";
 import LanguageToggle from "@/app/components/language-toggle";
 import SubmitWithOverlay from "@/app/components/form-pending-overlay";
 import DepositForm from "./components/deposit-form";
+import FloatingAnnouncement from "./components/floating-announcement";
 
 function formatCurrency(amount: number) {
   return amount.toLocaleString("en-EG", {
@@ -54,6 +55,14 @@ type FeaturedAccount = {
   user: { name: string };
 };
 
+type AnnouncementRecord = {
+  title: string;
+  body: string | null;
+  mediaUrl: string | null;
+  youtubeId: string | null;
+  createdAt: Date;
+};
+
 type DebtAccount = {
   id: number;
   name: string;
@@ -93,6 +102,28 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   await settleUserOverdrafts(user.id);
   await settleLoanRequestPenalties(user.id);
+
+  let announcementAvailable = true;
+  let announcement: { title: string; body: string | null; mediaUrl: string | null; youtubeId: string | null; createdAt: string } | null = null;
+
+  try {
+    const record = (await prisma.announcement.findFirst({
+      orderBy: { createdAt: "desc" },
+      select: { title: true, body: true, mediaUrl: true, youtubeId: true, createdAt: true },
+    })) as AnnouncementRecord | null;
+
+    if (record) {
+      announcement = {
+        title: record.title,
+        body: record.body,
+        mediaUrl: record.mediaUrl,
+        youtubeId: record.youtubeId,
+        createdAt: record.createdAt.toISOString(),
+      };
+    }
+  } catch {
+    announcementAvailable = false;
+  }
 
   const [accounts, transactions, targetAccountNames, overdraftAnchors, incomingRequests, outgoingRequests, mostafaAccount, mostafaUser] = await Promise.all([
     prisma.account.findMany({
@@ -202,6 +233,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <div className="floating-blur delay-300 left-1/3" />
         <div className="floating-blur delay-500 left-2/3" />
       </div>
+
+      {announcementAvailable && announcement && (
+        <FloatingAnnouncement announcement={announcement} locale={locale} />
+      )}
+      {!announcementAvailable && (
+        <div className="mx-auto max-w-6xl px-6 pt-8">
+          <div className="rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-50 ring-1 ring-amber-300/40">
+            {t("announcementUnavailableShort")}
+          </div>
+        </div>
+      )}
 
       <main className="mx-auto flex max-w-6xl flex-col gap-10 px-6 py-14">
         <header className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">

@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { Tajawal, Inter } from "next/font/google";
 import "./globals.css";
 import { resolveLocale, translate } from "@/lib/i18n";
-import LegalNoticeBanner from "@/app/components/legal-notice-banner";
+import LegalNoticeBannerLazy from "@/app/components/legal-notice-banner-lazy";
 
 const tajawal = Tajawal({ subsets: ["arabic"], weight: ["400", "500", "700"], display: "swap", variable: "--font-tajawal" });
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -26,6 +26,7 @@ export default async function RootLayout({
   const baseBg = showRamadan
     ? "bg-gradient-to-br from-emerald-950 via-slate-950 to-amber-900"
     : "bg-slate-950";
+  const ramadanGreeting = translate(locale, "ramadanGreeting");
   const legalTitle = translate(locale, "legalNoticeTitle");
   const legalBody = translate(locale, "legalNoticeBody");
   const footerCopyright = translate(locale, "footerCopyright");
@@ -53,7 +54,7 @@ export default async function RootLayout({
           <div className="fixed inset-x-0 top-0 z-40 flex justify-center p-3">
             <div className="flex items-center gap-3 rounded-2xl bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-100 ring-1 ring-emerald-400/30 shadow-lg shadow-emerald-500/20">
               <span className="inline-flex h-3 w-3 rounded-full bg-amber-300" aria-hidden />
-              <span>Ramadan Mubarak</span>
+              <span>{ramadanGreeting}</span>
             </div>
           </div>
         )}
@@ -66,7 +67,7 @@ export default async function RootLayout({
             <div className="text-xs text-slate-400">{legalBody}</div>
           </div>
         </footer>
-        <LegalNoticeBanner title={legalTitle} body={legalBody} />
+        <LegalNoticeBannerLazy title={legalTitle} body={legalBody} />
       </body>
     </html>
   );

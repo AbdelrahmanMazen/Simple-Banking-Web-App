@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Locale, supportedLocales } from "@/lib/i18n";
 
@@ -8,6 +9,7 @@ function setLangCookie(lang: Locale) {
 }
 
 export default function LanguageToggle({ locale }: { locale: Locale }) {
+  const router = useRouter();
   const [active, setActive] = useState<Locale>(locale);
   const [isPending, startTransition] = useTransition();
 
@@ -16,7 +18,7 @@ export default function LanguageToggle({ locale }: { locale: Locale }) {
     setActive(lang);
     setLangCookie(lang);
     startTransition(() => {
-      window.location.reload();
+      router.refresh();
     });
   };
 

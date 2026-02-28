@@ -70,7 +70,48 @@ const requestIdSchema = z
   .transform((val) => Number(val))
   .pipe(z.number().int().positive());
 
+const announcementSchema = z.object({
+  title: z.string().trim().min(3).max(120),
+  body: z.string().trim().max(600).optional(),
+  mediaUrl: z.string().trim().url().max(500).optional(),
+  youtubeUrl: z.string().trim().max(500).optional(),
+});
+
 const domainAdminEmail = process.env.DOMAIN_ADMIN_EMAIL?.toLowerCase();
+
+function extractYoutubeId(input?: string | null): string | null {
+  if (!input) return null;
+  const trimmed = input.trim();
+  const directId = /^[A-Za-z0-9_-]{11}$/;
+  if (directId.test(trimmed)) return trimmed;
+
+  try {
+    const url = new URL(trimmed.startsWith("http") ? trimmed : `https://${trimmed}`);
+    if (url.hostname.includes("youtube.com")) {
+      const v = url.searchParams.get("v");
+      if (v && directId.test(v)) return v;
+      const pathId = url.pathname.split("/").filter(Boolean).pop();
+      if (pathId && directId.test(pathId)) return pathId;
+    }
+    if (url.hostname === "youtu.be") {
+      const id = url.pathname.replace("/", "");
+      if (id && directId.test(id)) return id;
+    }
+  } catch {
+    // ignore parsing errors
+  }
+
+  return null;
+}
+
+async function isAnnouncementModelAvailable() {
+  try {
+    await prisma.announcement.count();
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 async function requireDomainAdmin() {
   const user = await getCurrentUser();
@@ -1228,6 +1269,52 @@ export async function updateMostafaDebt(formData: FormData) {
   }
 
   revalidateBankViews();
+  revalidatePath("/dashboard");
+  revalidatePath("/admin");
+}
+
+export async function adminSetAnnouncement(formData: FormData) {
+  const parsed = announcementSchema.safeParse({
+    title: formData.get("title"),
+    body: formData.get("body"),
+    mediaUrl: formData.get("mediaUrl"),
+    youtubeUrl: formData.get("youtubeUrl"),
+  });
+
+  if (!parsed.success) return;
+
+  const adminUser = await requireDomainAdmin();
+  if (!adminUser) return;
+
+  const available = await isAnnouncementModelAvailable();
+  if (!available) return;
+
+  const youtubeId = extractYoutubeId(parsed.data.youtubeUrl);
+
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    await tx.announcement.deleteMany();
+    await tx.announcement.create({
+      data: {
+        title: parsed.data.title.trim(),
+        body: parsed.data.body?.trim() || null,
+        mediaUrl: parsed.data.mediaUrl?.trim() || null,
+        youtubeId,
+      },
+    });
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/admin");
+}
+
+export async function adminDeleteAnnouncement() {
+  const adminUser = await requireDomainAdmin();
+  if (!adminUser) return;
+
+  const available = await isAnnouncementModelAvailable();
+  if (!available) return;
+
+  await prisma.announcement.deleteMany();
   revalidatePath("/dashboard");
   revalidatePath("/admin");
 }

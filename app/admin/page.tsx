@@ -3,7 +3,7 @@ import { Funnel, History, ListFilter, ShieldCheck, Trash2, Users, Wrench } from 
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import LanguageToggle from "@/app/components/language-toggle";
-import { adminClearAuditTrail, adminDeleteUser, adminUpdateAccount, adminRenumberAccount, updateMostafaDebt } from "@/app/actions/bankActions";
+import { adminClearAuditTrail, adminDeleteUser, adminUpdateAccount, adminRenumberAccount, adminDeleteAnnouncement, adminSetAnnouncement, updateMostafaDebt } from "@/app/actions/bankActions";
 import { getCurrentUser } from "@/lib/auth";
 import { resolveLocale, translate } from "@/lib/i18n";
 import prisma from "@/lib/prisma";
@@ -47,6 +47,16 @@ type AdminSearchParams = {
   lang?: string;
 };
 
+type AdminAnnouncement = {
+  id: number;
+  title: string;
+  body: string | null;
+  mediaUrl: string | null;
+  youtubeId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export default async function AdminPage({ searchParams }: { searchParams?: Promise<AdminSearchParams> }) {
   const resolvedParams = (await searchParams) ?? {};
   const cookieStore = await cookies();
@@ -63,6 +73,14 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
 
   const domainAdminEmail = process.env.DOMAIN_ADMIN_EMAIL?.toLowerCase();
   const isDomainAdmin = domainAdminEmail ? user.email.toLowerCase() === domainAdminEmail : user.isAdmin;
+
+  let announcementAvailable = true;
+  let announcement: AdminAnnouncement | null = null;
+  try {
+    announcement = (await prisma.announcement.findFirst({ orderBy: { createdAt: "desc" } })) as AdminAnnouncement | null;
+  } catch {
+    announcementAvailable = false;
+  }
 
   const baseTxnFilter: Prisma.TransactionWhereInput = includeDeleted ? {} : { deletedAt: null };
   const filteredTxWhere: Prisma.TransactionWhereInput = {
@@ -161,6 +179,126 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
             <LanguageToggle locale={locale} />
           </div>
         </header>
+
+        <section className="glass-panel rounded-3xl p-[1.5px] shadow-2xl shadow-black/30">
+          <div className="rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-amber-500/10 to-white/0 p-6">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm text-amber-200">{t("announcementAdminHeading")}</p>
+                <h2 className="text-lg font-semibold text-white">{t("announcementAdminSubtitle")}</h2>
+                {!announcementAvailable && (
+                  <p className="text-sm text-amber-100/80">{t("announcementUnavailable")}</p>
+                )}
+              </div>
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-100 ring-1 ring-white/15">
+                {announcementAvailable ? t("announcementBadge") : t("announcementUnavailableShort")}
+              </div>
+            </div>
+
+            <form
+              action={adminSetAnnouncement}
+              className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2"
+            >
+              <label className="space-y-2 text-sm font-medium text-slate-100">
+                {t("announcementTitleLabel")}
+                <input
+                  name="title"
+                  required
+                  defaultValue={announcement?.title ?? ""}
+                  className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-3 text-base text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-amber-200/70 focus:ring-amber-200/30 focus:outline-none"
+                  placeholder="Holiday updates, new feature, etc."
+                  disabled={!announcementAvailable || !isDomainAdmin}
+                />
+              </label>
+              <label className="space-y-2 text-sm font-medium text-slate-100">
+                {t("announcementMediaLabel")}
+                <input
+                  name="mediaUrl"
+                  type="url"
+                  defaultValue={announcement?.mediaUrl ?? ""}
+                  className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-3 text-base text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-amber-200/70 focus:ring-amber-200/30 focus:outline-none"
+                  placeholder="https://.../image.gif"
+                  disabled={!announcementAvailable || !isDomainAdmin}
+                />
+              </label>
+              <label className="space-y-2 text-sm font-medium text-slate-100 md:col-span-2">
+                {t("announcementBodyLabel")}
+                <textarea
+                  name="body"
+                  rows={3}
+                  defaultValue={announcement?.body ?? ""}
+                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-base text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-amber-200/70 focus:ring-amber-200/30 focus:outline-none"
+                  placeholder="Details, instructions, links..."
+                  disabled={!announcementAvailable || !isDomainAdmin}
+                />
+              </label>
+              <label className="space-y-2 text-sm font-medium text-slate-100 md:col-span-2">
+                {t("announcementYoutubeLabel")}
+                <input
+                  name="youtubeUrl"
+                  type="url"
+                  defaultValue={announcement?.youtubeId ? `https://youtu.be/${announcement.youtubeId}` : ""}
+                  className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-3 text-base text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-amber-200/70 focus:ring-amber-200/30 focus:outline-none"
+                  placeholder="YouTube link (optional)"
+                  disabled={!announcementAvailable || !isDomainAdmin}
+                />
+              </label>
+              <div className="md:col-span-2 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <p className="text-xs text-slate-300">
+                  {announcement?.updatedAt
+                    ? t("announcementUpdatedAt", { date: announcement.updatedAt.toLocaleString() })
+                    : t("announcementPreview")}
+                </p>
+                <SubmitWithOverlay
+                  label={t("announcementPublish")}
+                  pendingLabel={t("announcementPublishPending")}
+                  overlayMessage={t("announcementPublishPending")}
+                  disabled={!announcementAvailable || !isDomainAdmin}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-amber-500/30 transition hover:-translate-y-0.5 hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                >
+                  {t("announcementPublish")}
+                </SubmitWithOverlay>
+              </div>
+            </form>
+
+            <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4 ring-1 ring-white/10">
+              <div className="flex items-center justify-between gap-3">
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-100 ring-1 ring-white/15">
+                  {t("announcementPreview")}
+                </div>
+                {announcement && announcement.createdAt && (
+                  <span className="text-xs text-slate-400">{t("announcementUpdatedAt", { date: announcement.createdAt.toLocaleString() })}</span>
+                )}
+              </div>
+              {announcement ? (
+                <div className="mt-3 space-y-2">
+                  <p className="text-lg font-semibold text-white">{announcement.title}</p>
+                  {announcement.body && <p className="text-sm text-slate-200">{announcement.body}</p>}
+                  {!announcement.body && <p className="text-sm text-slate-400">{t("announcementNone")}</p>}
+                  {(announcement.mediaUrl || announcement.youtubeId) && (
+                    <p className="text-xs text-amber-100">{announcement.mediaUrl || announcement.youtubeId}</p>
+                  )}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-slate-300">{t("announcementNone")}</p>
+              )}
+            </div>
+
+            {announcement && (
+              <form action={adminDeleteAnnouncement} className="mt-4 flex justify-end">
+                <SubmitWithOverlay
+                  label={t("announcementDelete")}
+                  pendingLabel={t("announcementDeletePending")}
+                  overlayMessage={t("announcementDeletePending")}
+                  disabled={!announcementAvailable || !isDomainAdmin}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-rose-500/25 transition hover:-translate-y-0.5 hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Trash2 className="h-4 w-4" /> {t("announcementDelete")}
+                </SubmitWithOverlay>
+              </form>
+            )}
+          </div>
+        </section>
 
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="glass-panel rounded-2xl p-5 ring-1 ring-white/10">

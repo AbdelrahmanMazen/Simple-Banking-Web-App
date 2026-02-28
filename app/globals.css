@@ -32,6 +32,7 @@ body {
   border: 1px solid var(--panel-border);
   box-shadow: var(--shadow-strong);
   transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  will-change: transform, box-shadow;
 }
 
 .glass-panel:hover {
@@ -50,6 +51,8 @@ body {
   top: -10%;
   left: 10%;
   animation: float 16s ease-in-out infinite;
+  will-change: transform, filter;
+  transform: translateZ(0);
 }
 
 @keyframes float {
@@ -59,5 +62,26 @@ body {
   }
   50% {
     transform: translateY(12px) scale(1.02);
+  }
+}
+
+@media (max-width: 640px) {
+  .floating-blur {
+    width: 18rem;
+    height: 18rem;
+    filter: blur(56px);
+    top: -6%;
+    left: 6%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-panel {
+    transition: none;
+  }
+
+  .floating-blur {
+    animation: none;
+    transform: translateZ(0);
   }
 }
