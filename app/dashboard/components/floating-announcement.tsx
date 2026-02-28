@@ -12,6 +12,7 @@ type AnnouncementData = {
 	mediaUrl?: string | null;
 	youtubeId?: string | null;
 	createdAt?: string | null;
+	updatedAt?: string | null;
 };
 
 type Props = {
@@ -45,8 +46,8 @@ export default function FloatingAnnouncement({ announcement, locale }: Props) {
 						{t("announcementBadge")}
 					</div>
 					<div className="flex flex-wrap items-center gap-2 text-[11px] text-amber-100/80">
-						{announcement.createdAt && (
-							<span className="hidden sm:inline">{t("announcementUpdatedAt", { date: new Date(announcement.createdAt).toLocaleString() })}</span>
+						{announcement.updatedAt && (
+							<span className="hidden sm:inline">{t("announcementUpdatedAt", { date: new Date(announcement.updatedAt).toLocaleString() })}</span>
 						)}
 						<button
 							type="button"

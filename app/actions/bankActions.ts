@@ -70,13 +70,30 @@ const requestIdSchema = z
   .transform((val) => Number(val))
   .pipe(z.number().int().positive());
 
+const emptyToUndefined = (val: unknown) => (typeof val === "string" && val.trim() === "" ? undefined : val);
+
 const announcementSchema = z.object({
   title: z.string().trim().min(3).max(120),
   titleAr: z.string().trim().max(120).optional(),
   body: z.string().trim().max(600).optional(),
   bodyAr: z.string().trim().max(600).optional(),
-  mediaUrl: z.string().trim().url().max(500).optional(),
-  youtubeUrl: z.string().trim().max(500).optional(),
+  mediaUrl: z.preprocess(emptyToUndefined, z.string().trim().url().max(500).optional()),
+  youtubeUrl: z.preprocess(emptyToUndefined, z.string().trim().max(500).optional()),
+});
+
+const announcementScheduleSchema = announcementSchema.extend({
+  startsAt: z.string().trim().optional(),
+  endsAt: z.string().trim().optional(),
+  status: z.enum(["DRAFT", "SCHEDULED", "ACTIVE"]).optional(),
+  publishNow: z.preprocess((val) => (val === null ? undefined : val), z.string().optional()),
+});
+
+const announcementScheduleUpdateSchema = announcementScheduleSchema.extend({
+  id: idSchema,
+});
+
+const announcementScheduleIdSchema = z.object({
+  id: idSchema,
 });
 
 const domainAdminEmail = process.env.DOMAIN_ADMIN_EMAIL?.toLowerCase();
@@ -115,10 +132,43 @@ async function isAnnouncementModelAvailable() {
   }
 }
 
+async function isAnnouncementScheduleAvailable() {
+  try {
+    await prisma.announcementSchedule.count();
+    return true;
+  } catch {
+    console.log("isAnnouncementScheduleAvailable:countFailed");
+    return false;
+  }
+}
+
+function parseDateInput(raw?: string | null): Date | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed;
+}
+
+function resolveScheduleStatus(input?: string | null, publishNow?: boolean): "DRAFT" | "SCHEDULED" | "ACTIVE" | "CANCELLED" | "EXPIRED" {
+  if (publishNow) return "ACTIVE";
+  const normalized = input?.toUpperCase();
+  if (normalized === "DRAFT" || normalized === "ACTIVE") return normalized;
+  if (normalized === "CANCELLED" || normalized === "EXPIRED") return normalized;
+  return "SCHEDULED";
+}
+
 async function requireDomainAdmin() {
   const user = await getCurrentUser();
   if (!user || !user.isAdmin) return null;
   if (domainAdminEmail && user.email.toLowerCase() !== domainAdminEmail) return null;
+  return user;
+}
+
+async function requireAdmin() {
+  const user = await getCurrentUser();
+  if (!user || !user.isAdmin || !user.isVerified) return null;
   return user;
 }
 
@@ -1141,7 +1191,7 @@ export async function adminDeleteTransaction(formData: FormData) {
 
   if (!parsed.success) return;
 
-  const adminUser = await requireDomainAdmin();
+  const adminUser = await requireAdmin();
   if (!adminUser) return;
 
   const { transactionId, reason } = parsed.data;
@@ -1179,7 +1229,7 @@ export async function adminDeleteTransactionsBulk(formData: FormData) {
 
   if (!parsed.success) return;
 
-  const adminUser = await requireDomainAdmin();
+  const adminUser = await requireAdmin();
   if (!adminUser) return;
 
   const ids = Array.from(new Set(parsed.data.transactionIds));
@@ -1201,7 +1251,7 @@ export async function adminClearAuditTrail(formData: FormData) {
   const parsed = clearAuditSchema.safeParse({ confirm: formData.get("confirm") });
   if (!parsed.success) return;
 
-  const adminUser = await requireDomainAdmin();
+  const adminUser = await requireAdmin();
   if (!adminUser) return;
 
   if (parsed.data.confirm !== "clear") return;
@@ -1275,7 +1325,218 @@ export async function updateMostafaDebt(formData: FormData) {
   revalidatePath("/admin");
 }
 
+export async function adminCreateAnnouncementSchedule(formData: FormData) {
+  const parsed = announcementScheduleSchema.safeParse({
+    title: formData.get("title"),
+    titleAr: formData.get("titleAr"),
+    body: formData.get("body"),
+    bodyAr: formData.get("bodyAr"),
+    mediaUrl: formData.get("mediaUrl"),
+    youtubeUrl: formData.get("youtubeUrl"),
+    startsAt: formData.get("startsAt"),
+    endsAt: formData.get("endsAt"),
+    status: formData.get("status"),
+    publishNow: formData.get("publishNow"),
+  });
+
+  if (!parsed.success) {
+    console.log("adminCreateAnnouncementSchedule:parseError", parsed.error.flatten());
+    return;
+  }
+
+  console.log("adminCreateAnnouncementSchedule:start", parsed.data);
+
+  const adminUser = await requireAdmin();
+  if (!adminUser) {
+    console.log("adminCreateAnnouncementSchedule:noAdmin");
+    return;
+  }
+
+  const available = await isAnnouncementScheduleAvailable();
+  if (!available) {
+    console.log("adminCreateAnnouncementSchedule:unavailableModel");
+    return;
+  }
+
+  const publishNow = parsed.data.publishNow === "1";
+  const startsAt = publishNow ? new Date() : parseDateInput(parsed.data.startsAt) ?? new Date();
+  const endsAt = parseDateInput(parsed.data.endsAt);
+  if (endsAt && endsAt <= startsAt) {
+    console.log("adminCreateAnnouncementSchedule:endsBeforeStart", { startsAt, endsAt });
+    return;
+  }
+
+  const youtubeId = extractYoutubeId(parsed.data.youtubeUrl);
+  const status = resolveScheduleStatus(parsed.data.status, publishNow);
+
+  const created = await prisma.announcementSchedule.create({
+    data: {
+      title: parsed.data.title.trim(),
+      titleAr: parsed.data.titleAr?.trim() || null,
+      body: parsed.data.body?.trim() || null,
+      bodyAr: parsed.data.bodyAr?.trim() || null,
+      mediaUrl: parsed.data.mediaUrl?.trim() || null,
+      youtubeId,
+      startsAt,
+      endsAt,
+      status,
+    },
+  });
+
+  console.log("adminCreateAnnouncementSchedule:created", created);
+
+  revalidatePath("/dashboard");
+  revalidatePath("/admin");
+
+  redirect("/admin?announcementScheduled=1");
+}
+
+export async function adminUpdateAnnouncementSchedule(formData: FormData) {
+  const parsed = announcementScheduleUpdateSchema.safeParse({
+    id: formData.get("id"),
+    title: formData.get("title"),
+    titleAr: formData.get("titleAr"),
+    body: formData.get("body"),
+    bodyAr: formData.get("bodyAr"),
+    mediaUrl: formData.get("mediaUrl"),
+    youtubeUrl: formData.get("youtubeUrl"),
+    startsAt: formData.get("startsAt"),
+    endsAt: formData.get("endsAt"),
+    status: formData.get("status"),
+    publishNow: formData.get("publishNow"),
+  });
+
+  if (!parsed.success) {
+    console.log("adminUpdateAnnouncementSchedule:parseError", parsed.error.flatten());
+    return;
+  }
+
+  const adminUser = await requireAdmin();
+  if (!adminUser) {
+    console.log("adminUpdateAnnouncementSchedule:noAdmin");
+    return;
+  }
+
+  const available = await isAnnouncementScheduleAvailable();
+  if (!available) {
+    console.log("adminUpdateAnnouncementSchedule:unavailableModel");
+    return;
+  }
+
+  const existing = await prisma.announcementSchedule.findUnique({ where: { id: parsed.data.id } });
+  if (!existing) {
+    console.log("adminUpdateAnnouncementSchedule:notFound", parsed.data.id);
+    return;
+  }
+
+  const publishNow = parsed.data.publishNow === "1";
+  const startsAt = publishNow ? new Date() : parseDateInput(parsed.data.startsAt) ?? existing.startsAt;
+  const endsAt = parseDateInput(parsed.data.endsAt) ?? existing.endsAt;
+  if (endsAt && endsAt <= startsAt) return;
+
+  const youtubeId = extractYoutubeId(parsed.data.youtubeUrl) ?? existing.youtubeId ?? null;
+  const status = resolveScheduleStatus(parsed.data.status ?? existing.status, publishNow);
+
+  await prisma.announcementSchedule.update({
+    where: { id: existing.id },
+    data: {
+      title: parsed.data.title.trim(),
+      titleAr: parsed.data.titleAr?.trim() || null,
+      body: parsed.data.body?.trim() || null,
+      bodyAr: parsed.data.bodyAr?.trim() || null,
+      mediaUrl: parsed.data.mediaUrl?.trim() || null,
+      youtubeId,
+      startsAt,
+      endsAt,
+      status,
+    },
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/admin");
+
+  redirect("/admin?announcementUpdated=1");
+}
+
+export async function adminPublishAnnouncementNow(formData: FormData) {
+  const parsed = announcementScheduleIdSchema.safeParse({ id: formData.get("id") });
+  if (!parsed.success) {
+    console.log("adminPublishAnnouncementNow:parseError", parsed.error.flatten());
+    return;
+  }
+
+  const adminUser = await requireAdmin();
+  if (!adminUser) {
+    console.log("adminPublishAnnouncementNow:noAdmin");
+    return;
+  }
+
+  const available = await isAnnouncementScheduleAvailable();
+  if (!available) {
+    console.log("adminPublishAnnouncementNow:unavailableModel");
+    return;
+  }
+
+  const now = new Date();
+
+  await prisma.announcementSchedule.update({ where: { id: parsed.data.id }, data: { startsAt: now, status: "ACTIVE" } });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/admin");
+}
+
+export async function adminCancelAnnouncementSchedule(formData: FormData) {
+  const parsed = announcementScheduleIdSchema.safeParse({ id: formData.get("id") });
+  if (!parsed.success) {
+    console.log("adminCancelAnnouncementSchedule:parseError", parsed.error.flatten());
+    return;
+  }
+
+  const adminUser = await requireDomainAdmin();
+  if (!adminUser) {
+    console.log("adminCancelAnnouncementSchedule:noDomainAdmin");
+    return;
+  }
+
+  const available = await isAnnouncementScheduleAvailable();
+  if (!available) {
+    console.log("adminCancelAnnouncementSchedule:unavailableModel");
+    return;
+  }
+
+  await prisma.announcementSchedule.update({ where: { id: parsed.data.id }, data: { status: "CANCELLED" } });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/admin");
+}
+
+export async function adminDeleteAnnouncementSchedule(formData: FormData) {
+  const parsed = announcementScheduleIdSchema.safeParse({ id: formData.get("id") });
+  if (!parsed.success) {
+    console.log("adminDeleteAnnouncementSchedule:parseError", parsed.error.flatten());
+    return;
+  }
+
+  const adminUser = await requireDomainAdmin();
+  if (!adminUser) {
+    console.log("adminDeleteAnnouncementSchedule:noDomainAdmin");
+    return;
+  }
+
+  const available = await isAnnouncementScheduleAvailable();
+  if (!available) {
+    console.log("adminDeleteAnnouncementSchedule:unavailableModel");
+    return;
+  }
+
+  await prisma.announcementSchedule.delete({ where: { id: parsed.data.id } });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/admin");
+}
+
 export async function adminSetAnnouncement(formData: FormData) {
+  // Backwards-compatible: publish immediately as an active schedule entry.
   const parsed = announcementSchema.safeParse({
     title: formData.get("title"),
     titleAr: formData.get("titleAr"),
@@ -1285,19 +1546,29 @@ export async function adminSetAnnouncement(formData: FormData) {
     youtubeUrl: formData.get("youtubeUrl"),
   });
 
-  if (!parsed.success) return;
+  if (!parsed.success) {
+    console.log("adminSetAnnouncement:parseError", parsed.error.flatten());
+    return;
+  }
 
-  const adminUser = await requireDomainAdmin();
-  if (!adminUser) return;
+  const adminUser = await requireAdmin();
+  if (!adminUser) {
+    console.log("adminSetAnnouncement:noAdmin");
+    return;
+  }
 
-  const available = await isAnnouncementModelAvailable();
-  if (!available) return;
+  const scheduleAvailable = await isAnnouncementScheduleAvailable();
+  if (!scheduleAvailable) {
+    console.log("adminSetAnnouncement:unavailableModel");
+    return;
+  }
 
   const youtubeId = extractYoutubeId(parsed.data.youtubeUrl);
+  const now = new Date();
 
   await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.announcement.deleteMany();
-    await tx.announcement.create({
+    await tx.announcementSchedule.create({
       data: {
         title: parsed.data.title.trim(),
         titleAr: parsed.data.titleAr?.trim() || null,
@@ -1305,6 +1576,8 @@ export async function adminSetAnnouncement(formData: FormData) {
         bodyAr: parsed.data.bodyAr?.trim() || null,
         mediaUrl: parsed.data.mediaUrl?.trim() || null,
         youtubeId,
+        startsAt: now,
+        status: "ACTIVE",
       },
     });
   });
@@ -1317,10 +1590,30 @@ export async function adminSetAnnouncement(formData: FormData) {
 
 export async function adminDeleteAnnouncement() {
   const adminUser = await requireDomainAdmin();
-  if (!adminUser) return;
+  if (!adminUser) {
+    console.log("adminDeleteAnnouncement:noDomainAdmin");
+    return;
+  }
 
-  const available = await isAnnouncementModelAvailable();
-  if (!available) return;
+  const scheduleAvailable = await isAnnouncementScheduleAvailable();
+  if (!scheduleAvailable) {
+    console.log("adminDeleteAnnouncement:unavailableModel");
+    return;
+  }
+
+  const now = new Date();
+  const active = await prisma.announcementSchedule.findFirst({
+    where: {
+      status: { in: ["SCHEDULED", "ACTIVE"] },
+      startsAt: { lte: now },
+      OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+    },
+    orderBy: [{ startsAt: "desc" }, { updatedAt: "desc" }],
+  });
+
+  if (active) {
+    await prisma.announcementSchedule.update({ where: { id: active.id }, data: { status: "CANCELLED" } });
+  }
 
   await prisma.announcement.deleteMany();
   revalidatePath("/dashboard");

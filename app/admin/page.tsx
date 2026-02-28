@@ -3,7 +3,7 @@ import { Funnel, History, ListFilter, ShieldCheck, Trash2, Users, Wrench } from 
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import LanguageToggle from "@/app/components/language-toggle";
-import { adminClearAuditTrail, adminDeleteUser, adminUpdateAccount, adminRenumberAccount, adminDeleteAnnouncement, adminSetAnnouncement, updateMostafaDebt } from "@/app/actions/bankActions";
+import { adminClearAuditTrail, adminDeleteUser, adminUpdateAccount, adminRenumberAccount, adminDeleteAnnouncement, adminCreateAnnouncementSchedule, adminPublishAnnouncementNow, adminCancelAnnouncementSchedule, adminDeleteAnnouncementSchedule, updateMostafaDebt } from "@/app/actions/bankActions";
 import { getCurrentUser } from "@/lib/auth";
 import { resolveLocale, translate } from "@/lib/i18n";
 import prisma from "@/lib/prisma";
@@ -55,6 +55,9 @@ type AdminAnnouncement = {
   bodyAr: string | null;
   mediaUrl: string | null;
   youtubeId: string | null;
+  startsAt: Date;
+  endsAt: Date | null;
+  status: "DRAFT" | "SCHEDULED" | "ACTIVE" | "EXPIRED" | "CANCELLED";
   createdAt: Date;
   updatedAt: Date;
 };
@@ -76,11 +79,32 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
 
   const domainAdminEmail = process.env.DOMAIN_ADMIN_EMAIL?.toLowerCase();
   const isDomainAdmin = domainAdminEmail ? user.email.toLowerCase() === domainAdminEmail : user.isAdmin;
+  const canManageAnnouncements = user.isAdmin;
 
+  const now = new Date();
   let announcementAvailable = true;
   let announcement: AdminAnnouncement | null = null;
+  let announcementSchedules: (AdminAnnouncement & { derivedStatus: AdminAnnouncement["status"] })[] = [];
   try {
-    announcement = (await prisma.announcement.findFirst({ orderBy: { createdAt: "desc" } })) as AdminAnnouncement | null;
+    const schedules = (await prisma.announcementSchedule.findMany({ orderBy: { startsAt: "desc" }, take: 50 })) as AdminAnnouncement[];
+    announcementSchedules = schedules.map((s) => {
+      let derivedStatus: AdminAnnouncement["status"] = s.status;
+      if (s.status !== "CANCELLED") {
+        if (s.endsAt && s.endsAt <= now) {
+          derivedStatus = "EXPIRED";
+        } else if (s.startsAt <= now && (!s.endsAt || s.endsAt > now)) {
+          derivedStatus = "ACTIVE";
+        } else if (derivedStatus === "ACTIVE") {
+          derivedStatus = "SCHEDULED";
+        }
+      }
+      return { ...s, derivedStatus };
+    });
+
+    const active = announcementSchedules
+      .filter((s) => s.derivedStatus === "ACTIVE")
+      .sort((a, b) => b.startsAt.getTime() - a.startsAt.getTime() || b.updatedAt.getTime() - a.updatedAt.getTime());
+    announcement = active[0] ?? null;
   } catch {
     announcementAvailable = false;
   }
@@ -199,7 +223,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
             </div>
 
             <form
-              action={adminSetAnnouncement}
+              action={adminCreateAnnouncementSchedule}
               className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2"
             >
               <label className="space-y-2 text-sm font-medium text-slate-100">
@@ -210,7 +234,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                   defaultValue={announcement?.title ?? ""}
                   className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-3 text-base text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-amber-200/70 focus:ring-amber-200/30 focus:outline-none"
                   placeholder="Holiday updates, new feature, etc."
-                  disabled={!announcementAvailable || !isDomainAdmin}
+                  disabled={!announcementAvailable || !canManageAnnouncements}
                 />
               </label>
               <label className="space-y-2 text-sm font-medium text-slate-100">
@@ -220,7 +244,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                   defaultValue={announcement?.titleAr ?? ""}
                   className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-3 text-base text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-amber-200/70 focus:ring-amber-200/30 focus:outline-none"
                   placeholder="العنوان بالعربية"
-                  disabled={!announcementAvailable || !isDomainAdmin}
+                  disabled={!announcementAvailable || !canManageAnnouncements}
                 />
               </label>
               <label className="space-y-2 text-sm font-medium text-slate-100">
@@ -231,7 +255,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                   defaultValue={announcement?.mediaUrl ?? ""}
                   className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-3 text-base text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-amber-200/70 focus:ring-amber-200/30 focus:outline-none"
                   placeholder="https://.../image.gif"
-                  disabled={!announcementAvailable || !isDomainAdmin}
+                  disabled={!announcementAvailable || !canManageAnnouncements}
                 />
               </label>
               <label className="space-y-2 text-sm font-medium text-slate-100 md:col-span-2">
@@ -242,7 +266,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                   defaultValue={announcement?.body ?? ""}
                   className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-base text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-amber-200/70 focus:ring-amber-200/30 focus:outline-none"
                   placeholder="Details, instructions, links..."
-                  disabled={!announcementAvailable || !isDomainAdmin}
+                  disabled={!announcementAvailable || !canManageAnnouncements}
                 />
               </label>
               <label className="space-y-2 text-sm font-medium text-slate-100 md:col-span-2">
@@ -267,6 +291,49 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                   disabled={!announcementAvailable || !isDomainAdmin}
                 />
               </label>
+              <label className="space-y-2 text-sm font-medium text-slate-100">
+                {t("announcementStartLabel")}
+                <input
+                  name="startsAt"
+                  type="datetime-local"
+                  className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-3 text-base text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-amber-200/70 focus:ring-amber-200/30 focus:outline-none"
+                  placeholder="2026-03-01T12:00"
+                  disabled={!announcementAvailable || !isDomainAdmin}
+                />
+              </label>
+              <label className="space-y-2 text-sm font-medium text-slate-100">
+                {t("announcementEndLabel")}
+                <input
+                  name="endsAt"
+                  type="datetime-local"
+                  className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-3 text-base text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-amber-200/70 focus:ring-amber-200/30 focus:outline-none"
+                  placeholder="2026-03-05T18:00"
+                  disabled={!announcementAvailable || !isDomainAdmin}
+                />
+              </label>
+              <label className="space-y-2 text-sm font-medium text-slate-100">
+                {t("announcementStatusLabel")}
+                <select
+                  name="status"
+                  defaultValue="SCHEDULED"
+                  className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-3 text-base text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-amber-200/70 focus:ring-amber-200/30 focus:outline-none"
+                  disabled={!announcementAvailable || !isDomainAdmin}
+                >
+                  <option value="DRAFT">{t("announcementStatusDraft")}</option>
+                  <option value="SCHEDULED">{t("announcementStatusScheduled")}</option>
+                  <option value="ACTIVE">{t("announcementStatusActive")}</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-3 text-sm font-semibold text-amber-100 md:col-span-2">
+                <input
+                  type="checkbox"
+                  name="publishNow"
+                  value="1"
+                  className="h-4 w-4 rounded border-white/20 bg-white/10 text-amber-300 focus:ring-amber-300"
+                  disabled={!announcementAvailable || !canManageAnnouncements}
+                />
+                {t("announcementPublishNow")}
+              </label>
               <div className="md:col-span-2 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <p className="text-xs text-slate-300">
                   {announcement?.updatedAt
@@ -277,7 +344,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                   label={t("announcementPublish")}
                   pendingLabel={t("announcementPublishPending")}
                   overlayMessage={t("announcementPublishPending")}
-                  disabled={!announcementAvailable || !isDomainAdmin}
+                  disabled={!announcementAvailable || !canManageAnnouncements}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-amber-500/30 transition hover:-translate-y-0.5 hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                 >
                   {t("announcementPublish")}
@@ -291,7 +358,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                   {t("announcementPreview")}
                 </div>
                 {announcement && announcement.createdAt && (
-                  <span className="text-xs text-slate-400">{t("announcementUpdatedAt", { date: announcement.createdAt.toLocaleString() })}</span>
+                  <span className="text-xs text-slate-400">{t("announcementWindow", { start: announcement.startsAt.toLocaleString(), end: announcement.endsAt ? announcement.endsAt.toLocaleString() : t("announcementNoEnd") })}</span>
                 )}
               </div>
               {announcement ? (
@@ -313,6 +380,77 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
               ) : (
                 <p className="mt-3 text-sm text-slate-300">{t("announcementNone")}</p>
               )}
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 ring-1 ring-white/10">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-sm text-amber-200">{t("announcementScheduleListTitle")}</p>
+                  <p className="text-xs text-slate-400">{t("announcementScheduleListSubtitle")}</p>
+                </div>
+                <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-100 ring-1 ring-white/15">
+                  {announcementSchedules.length} items
+                </span>
+              </div>
+
+              <div className="mt-3 divide-y divide-white/5">
+                {announcementSchedules.map((item) => (
+                  <div key={item.id} className="flex flex-col gap-3 py-3 md:flex-row md:items-center md:justify-between md:gap-4">
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-white">{item.title}</p>
+                      <p className="text-xs text-slate-400">
+                        {t("announcementWindow", { start: item.startsAt.toLocaleString(), end: item.endsAt ? item.endsAt.toLocaleString() : t("announcementNoEnd") })}
+                      </p>
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-amber-100">
+                        {item.derivedStatus === "DRAFT" && t("announcementStatusDraft")}
+                        {item.derivedStatus === "SCHEDULED" && t("announcementStatusScheduled")}
+                        {item.derivedStatus === "ACTIVE" && t("announcementStatusActive")}
+                        {item.derivedStatus === "CANCELLED" && t("announcementStatusCancelled")}
+                        {item.derivedStatus === "EXPIRED" && t("announcementStatusExpired")}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+                      <form action={adminPublishAnnouncementNow} className="inline-flex" hidden={!canManageAnnouncements || item.derivedStatus === "ACTIVE"}>
+                        <input type="hidden" name="id" value={item.id} />
+                        <SubmitWithOverlay
+                          label={t("announcementPublishNowButton")}
+                          pendingLabel={t("announcementPublishPending")}
+                          overlayMessage={t("announcementPublishPending")}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 px-3 py-2 text-xs font-semibold text-slate-950 shadow-lg shadow-amber-500/30 transition hover:-translate-y-0.5 hover:bg-amber-300 disabled:opacity-60"
+                          disabled={!canManageAnnouncements || item.derivedStatus === "ACTIVE"}
+                        />
+                      </form>
+                      {/* Client-side edit button for modal editing */}
+                      {/* Client-side edit button for modal editing */}
+                      {/* Dynamically import AnnouncementEditButton to avoid SSR reference error */}
+                      {typeof window !== "undefined" && require("./AnnouncementEditButton").default && (
+                        React.createElement(require("./AnnouncementEditButton").default, { item })
+                      )}
+                      <form action={adminCancelAnnouncementSchedule} className="inline-flex" hidden={!canManageAnnouncements || item.derivedStatus === "CANCELLED" || item.derivedStatus === "EXPIRED"}>
+                        <input type="hidden" name="id" value={item.id} />
+                        <SubmitWithOverlay
+                          label={t("announcementCancel")}
+                          pendingLabel={t("announcementCancel")}
+                          overlayMessage={t("announcementCancel")}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold text-white ring-1 ring-white/20 transition hover:-translate-y-0.5 hover:bg-white/20 disabled:opacity-50"
+                          disabled={!canManageAnnouncements || item.derivedStatus === "CANCELLED" || item.derivedStatus === "EXPIRED"}
+                        />
+                      </form>
+                      <form action={adminDeleteAnnouncementSchedule} className="inline-flex" hidden={!canManageAnnouncements}>
+                        <input type="hidden" name="id" value={item.id} />
+                        <SubmitWithOverlay
+                          label={t("announcementDelete")}
+                          pendingLabel={t("announcementDeletePending")}
+                          overlayMessage={t("announcementDeletePending")}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-500 px-3 py-2 text-xs font-semibold text-white shadow-lg shadow-rose-500/25 transition hover:-translate-y-0.5 hover:bg-rose-400 disabled:opacity-60"
+                          disabled={!canManageAnnouncements}
+                        />
+                      </form>
+                    </div>
+                  </div>
+                ))}
+                {announcementSchedules.length === 0 && <p className="py-3 text-sm text-slate-300">{t("announcementScheduleEmpty")}</p>}
+              </div>
             </div>
 
             {announcement && (

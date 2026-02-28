@@ -63,7 +63,9 @@ type AnnouncementRecord = {
   bodyAr: string | null;
   mediaUrl: string | null;
   youtubeId: string | null;
-  createdAt: Date;
+  startsAt: Date;
+  endsAt: Date | null;
+  status: "DRAFT" | "SCHEDULED" | "ACTIVE" | "EXPIRED" | "CANCELLED";
   updatedAt: Date;
 };
 
@@ -122,9 +124,26 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     | null = null;
 
   try {
-    const record = (await prisma.announcement.findFirst({
-      orderBy: { createdAt: "desc" },
-      select: { title: true, titleAr: true, body: true, bodyAr: true, mediaUrl: true, youtubeId: true, createdAt: true, updatedAt: true },
+    const now = new Date();
+    const record = (await prisma.announcementSchedule.findFirst({
+      where: {
+        status: { in: ["SCHEDULED", "ACTIVE"] },
+        startsAt: { lte: now },
+        OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+      },
+      orderBy: [{ startsAt: "desc" }, { updatedAt: "desc" }],
+      select: {
+        title: true,
+        titleAr: true,
+        body: true,
+        bodyAr: true,
+        mediaUrl: true,
+        youtubeId: true,
+        startsAt: true,
+        endsAt: true,
+        status: true,
+        updatedAt: true,
+      },
     })) as AnnouncementRecord | null;
 
     if (record) {
@@ -135,7 +154,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         bodyAr: record.bodyAr,
         mediaUrl: record.mediaUrl,
         youtubeId: record.youtubeId,
-        createdAt: record.createdAt.toISOString(),
+        createdAt: record.startsAt.toISOString(),
         updatedAt: record.updatedAt.toISOString(),
       };
     }
@@ -252,9 +271,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <div className="floating-blur delay-500 left-2/3" />
       </div>
 
-      {announcementAvailable && announcement && (
+      {announcementAvailable && (
         <AnnouncementRefresh
-          updatedAt={announcement.updatedAt}
+          updatedAt={announcement?.updatedAt ?? null}
           title={t("announcementMaintenanceTitle")}
           subtitle={t("announcementMaintenanceSub")}
         />

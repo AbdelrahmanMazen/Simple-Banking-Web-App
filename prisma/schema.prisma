@@ -82,6 +82,33 @@ model Announcement {
   updatedAt DateTime @updatedAt
 }
 
+enum AnnouncementStatus {
+  DRAFT
+  SCHEDULED
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+model AnnouncementSchedule {
+  id        Int                  @id @default(autoincrement())
+  title     String
+  titleAr   String?
+  body      String?
+  bodyAr    String?
+  mediaUrl  String?
+  youtubeId String?
+  startsAt  DateTime
+  endsAt    DateTime?
+  status    AnnouncementStatus   @default(SCHEDULED)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  @@index([startsAt])
+  @@index([endsAt])
+  @@index([status])
+}
+
 model Session {
   token     String   @id
   user      User     @relation(fields: [userId], references: [id])
