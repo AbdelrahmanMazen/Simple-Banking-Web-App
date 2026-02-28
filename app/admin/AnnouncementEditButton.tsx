@@ -2,7 +2,13 @@
 import React, { useState } from "react";
 import EditAnnouncementModal from "./EditAnnouncementModal";
 
-export default function AnnouncementEditButton({ item }) {
+import { AdminAnnouncement } from "./types";
+
+type Props = {
+  item: AdminAnnouncement;
+};
+
+export default function AnnouncementEditButton({ item }: Props) {
   const [open, setOpen] = useState(false);
   return (
     <>

@@ -1,3 +1,4 @@
+import React from "react";
 import { Prisma } from "@prisma/client";
 import { Funnel, History, ListFilter, ShieldCheck, Trash2, Users, Wrench } from "lucide-react";
 import { redirect } from "next/navigation";

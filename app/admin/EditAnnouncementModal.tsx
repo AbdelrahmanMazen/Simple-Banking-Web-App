@@ -1,7 +1,14 @@
 "use client";
 import React, { useState } from "react";
 
-export default function EditAnnouncementModal({ item, onClose }) {
+import { AdminAnnouncement } from "./types";
+
+type Props = {
+  item: AdminAnnouncement;
+  onClose: () => void;
+};
+
+export default function EditAnnouncementModal({ item, onClose }: Props) {
   const [form, setForm] = useState({
     title: item.title || "",
     titleAr: item.titleAr || "",
@@ -15,7 +22,7 @@ export default function EditAnnouncementModal({ item, onClose }) {
     id: item.id,
   });
 
-  function handleChange(e) {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   }
