@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Tajawal, Inter } from "next/font/google";
 import "./globals.css";
-import { resolveLocale } from "@/lib/i18n";
+import { resolveLocale, translate } from "@/lib/i18n";
+import LegalNoticeBanner from "@/app/components/legal-notice-banner";
 
 const tajawal = Tajawal({ subsets: ["arabic"], weight: ["400", "500", "700"], display: "swap", variable: "--font-tajawal" });
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -25,6 +26,9 @@ export default async function RootLayout({
   const baseBg = showRamadan
     ? "bg-gradient-to-br from-emerald-950 via-slate-950 to-amber-900"
     : "bg-slate-950";
+  const legalTitle = translate(locale, "legalNoticeTitle");
+  const legalBody = translate(locale, "legalNoticeBody");
+  const footerCopyright = translate(locale, "footerCopyright");
 
   return (
     <html lang={locale} dir={locale === "ar" ? "rtl" : "ltr"}>
@@ -54,6 +58,15 @@ export default async function RootLayout({
           </div>
         )}
         <div className="relative z-10 min-h-screen">{children}</div>
+        <footer className="relative z-20 border-t border-white/5 bg-black/20 px-6 py-5 backdrop-blur-md">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 text-sm text-slate-200/85">
+            <div className="font-semibold text-white">SimpleBank</div>
+            <div className="text-xs text-slate-200">{footerCopyright}</div>
+            <div className="text-xs text-slate-300">{legalTitle}</div>
+            <div className="text-xs text-slate-400">{legalBody}</div>
+          </div>
+        </footer>
+        <LegalNoticeBanner title={legalTitle} body={legalBody} />
       </body>
     </html>
   );
