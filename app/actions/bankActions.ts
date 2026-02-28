@@ -52,6 +52,11 @@ const adjustMostafaDebtSchema = z.object({
   direction: z.enum(["add", "pay"]),
 });
 
+const renumberAccountSchema = z.object({
+  accountId: idSchema,
+  newAccountId: idSchema,
+});
+
 const targetAccountNameSchema = z.string().trim().min(1).max(120);
 const requestSchema = z.object({
   targetName: z.string().trim().min(1).max(80),
@@ -1319,4 +1324,51 @@ export async function adminUpdateAccount(formData: FormData) {
   }
 
   revalidateBankViews();
+}
+
+export async function adminRenumberAccount(formData: FormData) {
+  const parsed = renumberAccountSchema.safeParse({
+    accountId: formData.get("accountId"),
+    newAccountId: formData.get("newAccountId"),
+  });
+
+  if (!parsed.success) return;
+
+  const adminUser = await requireDomainAdmin();
+  if (!adminUser) return;
+
+  const { accountId, newAccountId } = parsed.data;
+  if (accountId === newAccountId) return;
+
+  try {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const source = await tx.account.findUnique({ where: { id: accountId } });
+      if (!source) return;
+
+      const targetExists = await tx.account.findUnique({ where: { id: newAccountId }, select: { id: true } });
+      if (targetExists) {
+        throw new Error("Target account number already exists");
+      }
+
+      await tx.account.create({
+        data: {
+          id: newAccountId,
+          name: source.name,
+          balanceCents: source.balanceCents,
+          createdAt: source.createdAt,
+          userId: source.userId,
+        },
+      });
+
+      await tx.transaction.updateMany({ where: { accountId }, data: { accountId: newAccountId } });
+      await tx.account.delete({ where: { id: accountId } });
+
+      await tx.$executeRaw`SELECT setval(pg_get_serial_sequence('"Account"', 'id'), (SELECT COALESCE(MAX(id), 1) FROM "Account"))`;
+    });
+  } catch {
+    return;
+  }
+
+  revalidateBankViews();
+  revalidatePath("/admin");
 }

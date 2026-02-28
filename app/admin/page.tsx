@@ -3,7 +3,7 @@ import { Funnel, History, ListFilter, ShieldCheck, Trash2, Users, Wrench } from 
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import LanguageToggle from "@/app/components/language-toggle";
-import { adminClearAuditTrail, adminDeleteUser, adminUpdateAccount, updateMostafaDebt } from "@/app/actions/bankActions";
+import { adminClearAuditTrail, adminDeleteUser, adminUpdateAccount, adminRenumberAccount, updateMostafaDebt } from "@/app/actions/bankActions";
 import { getCurrentUser } from "@/lib/auth";
 import { resolveLocale, translate } from "@/lib/i18n";
 import prisma from "@/lib/prisma";
@@ -352,6 +352,58 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                 </div>
               ))}
             </div>
+          </div>
+        </section>
+
+        <section className="glass-panel rounded-3xl p-[1.5px] shadow-2xl shadow-black/30">
+          <div className="rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-emerald-500/5 to-white/0 p-6">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-sm text-slate-300">Reorder account numbers</p>
+                <h2 className="text-lg font-semibold text-white">Change account ID safely</h2>
+                <p className="text-sm text-slate-400">Moves balances and transactions to a new account number.</p>
+              </div>
+              <div className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/15">
+                <Wrench className="h-4 w-4" /> Admin only
+              </div>
+            </div>
+
+            <form action={adminRenumberAccount} className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <label className="space-y-2 text-sm font-medium text-slate-100">
+                Current account #
+                <input
+                  name="accountId"
+                  type="number"
+                  min="1"
+                  required
+                  className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-3 text-base text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-emerald-200/70 focus:ring-emerald-200/30 focus:outline-none"
+                  placeholder="e.g. 12"
+                />
+              </label>
+              <label className="space-y-2 text-sm font-medium text-slate-100">
+                New account #
+                <input
+                  name="newAccountId"
+                  type="number"
+                  min="1"
+                  required
+                  className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-3 text-base text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-emerald-200/70 focus:ring-emerald-200/30 focus:outline-none"
+                  placeholder="e.g. 3"
+                />
+              </label>
+              <div className="md:col-span-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <p className="text-xs text-amber-200">Ensure the new number is unused. All transactions will move with the account.</p>
+                <SubmitWithOverlay
+                  label="Renumber account"
+                  pendingLabel="Renumbering..."
+                  overlayMessage="Renumbering account..."
+                  disabled={!isDomainAdmin}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                >
+                  <Wrench className="h-4 w-4" /> Renumber
+                </SubmitWithOverlay>
+              </div>
+            </form>
           </div>
         </section>
 
