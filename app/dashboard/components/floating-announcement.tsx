@@ -62,7 +62,7 @@ export default function FloatingAnnouncement({ announcement, locale }: Props) {
 				<div className="grid gap-5 px-4 py-5 sm:px-6 sm:py-6 md:grid-cols-[1.2fr_1fr]">
 					<div className="space-y-3">
 						<h3 className="text-xl font-semibold leading-tight text-white sm:text-2xl">{localizedTitle}</h3>
-						{localizedBody && <p className="text-sm leading-6 text-slate-200 sm:text-base">{localizedBody}</p>}
+						{localizedBody && <p className="text-sm leading-6 whitespace-pre-line text-slate-200 sm:text-base">{localizedBody}</p>}
 						{!localizedBody && <p className="text-sm text-slate-300">{t("announcementNone")}</p>}
 					</div>
 

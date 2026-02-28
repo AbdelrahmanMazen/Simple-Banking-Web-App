@@ -297,13 +297,13 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
               {announcement ? (
                 <div className="mt-3 space-y-2">
                   <p className="text-lg font-semibold text-white">{announcement.title}</p>
-                  {announcement.body && <p className="text-sm text-slate-200">{announcement.body}</p>}
+                  {announcement.body && <p className="text-sm whitespace-pre-line text-slate-200">{announcement.body}</p>}
                   {!announcement.body && <p className="text-sm text-slate-400">{t("announcementNone")}</p>}
                   {(announcement.titleAr || announcement.bodyAr) && (
                     <div className="mt-3 space-y-1 rounded-xl border border-white/10 bg-white/5 p-3 text-right ring-1 ring-white/10" dir="rtl">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-100">{t("announcementArabicVariant")}</p>
                       <p className="text-lg font-semibold text-white">{announcement.titleAr || announcement.title}</p>
-                      {announcement.bodyAr && <p className="text-sm text-slate-200">{announcement.bodyAr}</p>}
+                      {announcement.bodyAr && <p className="text-sm whitespace-pre-line text-slate-200">{announcement.bodyAr}</p>}
                     </div>
                   )}
                   {(announcement.mediaUrl || announcement.youtubeId) && (
