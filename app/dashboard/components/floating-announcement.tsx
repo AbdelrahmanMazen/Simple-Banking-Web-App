@@ -24,15 +24,15 @@ export default function FloatingAnnouncement({ announcement, locale }: Props) {
 	const isRTL = locale === "ar";
 	const t = (key: Parameters<typeof translate>[1], params?: Record<string, string>) => translate(locale, key, params);
 
-	const localizedTitle = isRTL ? announcement.titleAr || announcement.title : announcement.title;
-	const localizedBody = isRTL ? announcement.bodyAr || announcement.body : announcement.body;
-
 	const embedUrl = useMemo(() => {
 		if (!announcement?.youtubeId) return null;
 		return `https://www.youtube.com/embed/${announcement.youtubeId}?rel=0&modestbranding=1&playsinline=1`;
 	}, [announcement?.youtubeId]);
 
 	if (!announcement || dismissed) return null;
+
+	const localizedTitle = isRTL ? announcement.titleAr || announcement.title : announcement.title;
+	const localizedBody = isRTL ? announcement.bodyAr || announcement.body : announcement.body;
 
 	return (
 		<div
