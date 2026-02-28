@@ -50,7 +50,9 @@ type AdminSearchParams = {
 type AdminAnnouncement = {
   id: number;
   title: string;
+  titleAr: string | null;
   body: string | null;
+  bodyAr: string | null;
   mediaUrl: string | null;
   youtubeId: string | null;
   createdAt: Date;
@@ -61,6 +63,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
   const resolvedParams = (await searchParams) ?? {};
   const cookieStore = await cookies();
   const locale = resolveLocale(resolvedParams.lang ?? cookieStore.get("lang")?.value ?? "en");
+  const isRTL = locale === "ar";
   const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) => translate(locale, key, params);
   const filterType = resolvedParams.type?.toUpperCase();
   const includeDeleted = resolvedParams.includeDeleted === "1";
@@ -156,7 +159,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
   }));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
+    <div dir={isRTL ? "rtl" : "ltr"} className={`min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white ${isRTL ? "text-right" : ""}`}>
       <div className="absolute inset-0 -z-10 overflow-hidden opacity-60">
         <div className="floating-blur" />
         <div className="floating-blur delay-300 left-1/3" />
@@ -211,6 +214,16 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                 />
               </label>
               <label className="space-y-2 text-sm font-medium text-slate-100">
+                {t("announcementTitleArLabel")}
+                <input
+                  name="titleAr"
+                  defaultValue={announcement?.titleAr ?? ""}
+                  className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-3 text-base text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-amber-200/70 focus:ring-amber-200/30 focus:outline-none"
+                  placeholder="العنوان بالعربية"
+                  disabled={!announcementAvailable || !isDomainAdmin}
+                />
+              </label>
+              <label className="space-y-2 text-sm font-medium text-slate-100">
                 {t("announcementMediaLabel")}
                 <input
                   name="mediaUrl"
@@ -229,6 +242,17 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                   defaultValue={announcement?.body ?? ""}
                   className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-base text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-amber-200/70 focus:ring-amber-200/30 focus:outline-none"
                   placeholder="Details, instructions, links..."
+                  disabled={!announcementAvailable || !isDomainAdmin}
+                />
+              </label>
+              <label className="space-y-2 text-sm font-medium text-slate-100 md:col-span-2">
+                {t("announcementBodyArLabel")}
+                <textarea
+                  name="bodyAr"
+                  rows={3}
+                  defaultValue={announcement?.bodyAr ?? ""}
+                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-base text-white placeholder:text-slate-500 ring-1 ring-white/5 focus:border-amber-200/70 focus:ring-amber-200/30 focus:outline-none"
+                  placeholder="المحتوى بالعربية"
                   disabled={!announcementAvailable || !isDomainAdmin}
                 />
               </label>
@@ -275,6 +299,13 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                   <p className="text-lg font-semibold text-white">{announcement.title}</p>
                   {announcement.body && <p className="text-sm text-slate-200">{announcement.body}</p>}
                   {!announcement.body && <p className="text-sm text-slate-400">{t("announcementNone")}</p>}
+                  {(announcement.titleAr || announcement.bodyAr) && (
+                    <div className="mt-3 space-y-1 rounded-xl border border-white/10 bg-white/5 p-3 text-right ring-1 ring-white/10" dir="rtl">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-100">{t("announcementArabicVariant")}</p>
+                      <p className="text-lg font-semibold text-white">{announcement.titleAr || announcement.title}</p>
+                      {announcement.bodyAr && <p className="text-sm text-slate-200">{announcement.bodyAr}</p>}
+                    </div>
+                  )}
                   {(announcement.mediaUrl || announcement.youtubeId) && (
                     <p className="text-xs text-amber-100">{announcement.mediaUrl || announcement.youtubeId}</p>
                   )}

@@ -72,7 +72,9 @@ const requestIdSchema = z
 
 const announcementSchema = z.object({
   title: z.string().trim().min(3).max(120),
+  titleAr: z.string().trim().max(120).optional(),
   body: z.string().trim().max(600).optional(),
+  bodyAr: z.string().trim().max(600).optional(),
   mediaUrl: z.string().trim().url().max(500).optional(),
   youtubeUrl: z.string().trim().max(500).optional(),
 });
@@ -1276,7 +1278,9 @@ export async function updateMostafaDebt(formData: FormData) {
 export async function adminSetAnnouncement(formData: FormData) {
   const parsed = announcementSchema.safeParse({
     title: formData.get("title"),
+    titleAr: formData.get("titleAr"),
     body: formData.get("body"),
+    bodyAr: formData.get("bodyAr"),
     mediaUrl: formData.get("mediaUrl"),
     youtubeUrl: formData.get("youtubeUrl"),
   });
@@ -1296,7 +1300,9 @@ export async function adminSetAnnouncement(formData: FormData) {
     await tx.announcement.create({
       data: {
         title: parsed.data.title.trim(),
+        titleAr: parsed.data.titleAr?.trim() || null,
         body: parsed.data.body?.trim() || null,
+        bodyAr: parsed.data.bodyAr?.trim() || null,
         mediaUrl: parsed.data.mediaUrl?.trim() || null,
         youtubeId,
       },
@@ -1305,6 +1311,8 @@ export async function adminSetAnnouncement(formData: FormData) {
 
   revalidatePath("/dashboard");
   revalidatePath("/admin");
+
+  redirect("/admin?announcementPublished=1");
 }
 
 export async function adminDeleteAnnouncement() {

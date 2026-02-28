@@ -36,6 +36,7 @@ function formatCurrency(amount: number) {
 
 export default function TransactionsManager({ transactions, isDomainAdmin, locale }: Props) {
   const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) => translate(locale, key, params);
+  const isRTL = locale === "ar";
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
   const allSelected = selectedIds.length > 0 && selectedIds.length === transactions.length;
@@ -56,7 +57,7 @@ export default function TransactionsManager({ transactions, isDomainAdmin, local
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   return (
-    <div className="space-y-4">
+    <div dir={isRTL ? "rtl" : "ltr"} className={`space-y-4 ${isRTL ? "text-right" : ""}`}>
       <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 ring-1 ring-white/10 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
           <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-200">

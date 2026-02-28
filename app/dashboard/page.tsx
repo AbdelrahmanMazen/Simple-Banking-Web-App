@@ -11,6 +11,7 @@ import LanguageToggle from "@/app/components/language-toggle";
 import SubmitWithOverlay from "@/app/components/form-pending-overlay";
 import DepositForm from "./components/deposit-form";
 import FloatingAnnouncement from "./components/floating-announcement";
+import AnnouncementRefresh from "./components/announcement-refresh";
 
 function formatCurrency(amount: number) {
   return amount.toLocaleString("en-EG", {
@@ -57,10 +58,13 @@ type FeaturedAccount = {
 
 type AnnouncementRecord = {
   title: string;
+  titleAr: string | null;
   body: string | null;
+  bodyAr: string | null;
   mediaUrl: string | null;
   youtubeId: string | null;
   createdAt: Date;
+  updatedAt: Date;
 };
 
 type DebtAccount = {
@@ -104,21 +108,35 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   await settleLoanRequestPenalties(user.id);
 
   let announcementAvailable = true;
-  let announcement: { title: string; body: string | null; mediaUrl: string | null; youtubeId: string | null; createdAt: string } | null = null;
+  let announcement:
+    | {
+        title: string;
+        titleAr: string | null;
+        body: string | null;
+        bodyAr: string | null;
+        mediaUrl: string | null;
+        youtubeId: string | null;
+        createdAt: string;
+        updatedAt: string;
+      }
+    | null = null;
 
   try {
     const record = (await prisma.announcement.findFirst({
       orderBy: { createdAt: "desc" },
-      select: { title: true, body: true, mediaUrl: true, youtubeId: true, createdAt: true },
+      select: { title: true, titleAr: true, body: true, bodyAr: true, mediaUrl: true, youtubeId: true, createdAt: true, updatedAt: true },
     })) as AnnouncementRecord | null;
 
     if (record) {
       announcement = {
         title: record.title,
+        titleAr: record.titleAr,
         body: record.body,
+        bodyAr: record.bodyAr,
         mediaUrl: record.mediaUrl,
         youtubeId: record.youtubeId,
         createdAt: record.createdAt.toISOString(),
+        updatedAt: record.updatedAt.toISOString(),
       };
     }
   } catch {
@@ -234,6 +252,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <div className="floating-blur delay-500 left-2/3" />
       </div>
 
+      {announcementAvailable && announcement && (
+        <AnnouncementRefresh
+          updatedAt={announcement.updatedAt}
+          title={t("announcementMaintenanceTitle")}
+          subtitle={t("announcementMaintenanceSub")}
+        />
+      )}
       {announcementAvailable && announcement && (
         <FloatingAnnouncement announcement={announcement} locale={locale} />
       )}

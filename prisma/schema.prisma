@@ -73,7 +73,9 @@ model Request {
 model Announcement {
   id        Int      @id @default(autoincrement())
   title     String
+  titleAr   String?
   body      String?
+  bodyAr    String?
   mediaUrl  String?
   youtubeId String?
   createdAt DateTime @default(now())

@@ -1,0 +1,2 @@
+-- Placeholder to satisfy missing migration reference.
+-- No-op migration; columns are added in later migration.
