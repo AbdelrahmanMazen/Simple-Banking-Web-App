@@ -1342,7 +1342,7 @@ export async function adminRenumberAccount(formData: FormData) {
 
   try {
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const source = await tx.account.findUnique({ where: { id: accountId } });
+      const source = await tx.account.findUnique({ where: { id: accountId }, select: { id: true, name: true, balanceCents: true, createdAt: true, userId: true } });
       if (!source) return;
 
       const targetExists = await tx.account.findUnique({ where: { id: newAccountId }, select: { id: true } });
@@ -1361,9 +1361,25 @@ export async function adminRenumberAccount(formData: FormData) {
       });
 
       await tx.transaction.updateMany({ where: { accountId }, data: { accountId: newAccountId } });
+      await tx.transaction.create({
+        data: {
+          accountId: newAccountId,
+          type: "ADMIN_RENUMBER",
+          amountCents: 0,
+          description: `Admin renumbered account #${accountId} to #${newAccountId}`,
+          balanceAfterCents: source.balanceCents,
+          source: "Admin renumber",
+        },
+      });
       await tx.account.delete({ where: { id: accountId } });
 
-      await tx.$executeRaw`SELECT setval(pg_get_serial_sequence('"Account"', 'id'), (SELECT COALESCE(MAX(id), 1) FROM "Account"))`;
+      if (process.env.DATABASE_URL?.toLowerCase().startsWith("postgres")) {
+        try {
+          await tx.$executeRaw`SELECT setval(pg_get_serial_sequence('"Account"', 'id'), (SELECT COALESCE(MAX(id), 1) FROM "Account"))`;
+        } catch {
+          // noop: sequence adjustment best-effort
+        }
+      }
     });
   } catch {
     return;
