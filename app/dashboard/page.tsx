@@ -292,7 +292,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <main className="mx-auto flex max-w-6xl flex-col gap-10 px-6 py-14">
         <header className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-2">
-            <p className="text-sm uppercase tracking-[0.2em] text-slate-400">{t("simpleBank")}</p>
+            <div className="flex items-center gap-3">
+              <span className="sr-only">{t("simpleBank")}</span>
+              <img src="/logo-simplebank.svg" alt="SimpleBank logo" className="h-9 w-auto" />
+            </div>
             <h1 className="text-3xl font-semibold text-white sm:text-4xl">
               {t("welcomeBack", { name: user.name })}
             </h1>

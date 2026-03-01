@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import Link from "next/link";
 import { Tajawal, Inter } from "next/font/google";
 import "./globals.css";
 import { resolveLocale, translate } from "@/lib/i18n";
@@ -11,6 +12,11 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 export const metadata: Metadata = {
   title: "SimpleBank",
   description: "Lightweight banking demo with accounts, deposits, and withdrawals.",
+  icons: {
+    icon: "/logo-simplebank-icon.svg",
+    shortcut: "/logo-simplebank-icon.svg",
+    apple: "/logo-simplebank-icon.svg",
+  },
 };
 
 export default async function RootLayout({
@@ -61,7 +67,9 @@ export default async function RootLayout({
         <div className="relative z-10 min-h-screen">{children}</div>
         <footer className="relative z-20 border-t border-white/5 bg-black/20 px-6 py-5 backdrop-blur-md">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 text-sm text-slate-200/85">
-            <div className="font-semibold text-white">SimpleBank</div>
+            <div className="flex items-center gap-2">
+              <img src="/logo-simplebank.svg" alt="SimpleBank logo" className="h-8 w-auto" />
+            </div>
             <div className="text-xs text-slate-200">{footerCopyright}</div>
             <div className="text-xs text-slate-300">{legalTitle}</div>
             <div className="text-xs text-slate-400">{legalBody}</div>

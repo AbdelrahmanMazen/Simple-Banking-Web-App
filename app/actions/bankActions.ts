@@ -182,6 +182,19 @@ function parseDateInput(raw?: string | null): Date | null {
   return parsed;
 }
 
+// Treat admin-entered schedule times as Africa/Cairo (UTC+02) to keep announcements aligned with Egypt time.
+// Note: if Egypt DST shifts, adjust the offset accordingly; currently assuming +02.
+function parseEgyptLocalDate(raw?: string | null): Date | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  // datetime-local comes without zone; append +02:00 to anchor to Cairo time.
+  const withOffset = trimmed.endsWith("Z") || /[+-]\d\d:?\d\d$/.test(trimmed) ? trimmed : `${trimmed}+02:00`;
+  const parsed = new Date(withOffset);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed;
+}
+
 function resolveScheduleStatus(input?: string | null, publishNow?: boolean): "DRAFT" | "SCHEDULED" | "ACTIVE" | "CANCELLED" | "EXPIRED" {
   if (publishNow) return "ACTIVE";
   const normalized = input?.toUpperCase();
@@ -1396,8 +1409,8 @@ export async function adminCreateAnnouncementSchedule(formData: FormData) {
   }
 
   const publishNow = parsed.data.publishNow === "1";
-  const startsAt = publishNow ? new Date() : parseDateInput(parsed.data.startsAt) ?? new Date();
-  const endsAt = parseDateInput(parsed.data.endsAt);
+  const startsAt = publishNow ? new Date() : parseEgyptLocalDate(parsed.data.startsAt) ?? new Date();
+  const endsAt = parseEgyptLocalDate(parsed.data.endsAt);
   if (endsAt && endsAt <= startsAt) {
     console.log("adminCreateAnnouncementSchedule:endsBeforeStart", { startsAt, endsAt });
     return;
@@ -1428,7 +1441,9 @@ export async function adminCreateAnnouncementSchedule(formData: FormData) {
   redirect("/admin?announcementScheduled=1");
 }
 
-export async function adminUpdateAnnouncementSchedule(formData: FormData) {
+type AnnouncementUpdateResult = { redirectUrl?: string; error?: string };
+
+async function updateAnnouncementScheduleInternal(formData: FormData): Promise<AnnouncementUpdateResult> {
   const parsed = announcementScheduleUpdateSchema.safeParse({
     id: formData.get("id"),
     title: formData.get("title"),
@@ -1445,31 +1460,31 @@ export async function adminUpdateAnnouncementSchedule(formData: FormData) {
 
   if (!parsed.success) {
     console.log("adminUpdateAnnouncementSchedule:parseError", parsed.error.flatten());
-    return;
+    return { error: "parse" };
   }
 
   const adminUser = await requireAdmin();
   if (!adminUser) {
     console.log("adminUpdateAnnouncementSchedule:noAdmin");
-    return;
+    return { error: "auth" };
   }
 
   const available = await isAnnouncementScheduleAvailable();
   if (!available) {
     console.log("adminUpdateAnnouncementSchedule:unavailableModel");
-    return;
+    return { error: "model" };
   }
 
   const existing = await prisma.announcementSchedule.findUnique({ where: { id: parsed.data.id } });
   if (!existing) {
     console.log("adminUpdateAnnouncementSchedule:notFound", parsed.data.id);
-    return;
+    return { error: "notFound" };
   }
 
   const publishNow = parsed.data.publishNow === "1";
-  const startsAt = publishNow ? new Date() : parseDateInput(parsed.data.startsAt) ?? existing.startsAt;
-  const endsAt = parseDateInput(parsed.data.endsAt) ?? existing.endsAt;
-  if (endsAt && endsAt <= startsAt) return;
+  const startsAt = publishNow ? new Date() : parseEgyptLocalDate(parsed.data.startsAt) ?? existing.startsAt;
+  const endsAt = parseEgyptLocalDate(parsed.data.endsAt) ?? existing.endsAt;
+  if (endsAt && endsAt <= startsAt) return { error: "endsBeforeStart" };
 
   const youtubeId = extractYoutubeId(parsed.data.youtubeUrl) ?? existing.youtubeId ?? null;
   const status = resolveScheduleStatus(parsed.data.status ?? existing.status, publishNow);
@@ -1492,7 +1507,13 @@ export async function adminUpdateAnnouncementSchedule(formData: FormData) {
   revalidatePath("/dashboard");
   revalidatePath("/admin");
 
-  redirect("/admin?announcementUpdated=1");
+  return { redirectUrl: "/admin?announcementUpdated=1" };
+}
+
+export async function adminUpdateAnnouncementSchedule(formData: FormData) {
+  const result = await updateAnnouncementScheduleInternal(formData);
+  if (result.redirectUrl) redirect(result.redirectUrl);
+  return;
 }
 
 export async function adminPublishAnnouncementNow(formData: FormData) {

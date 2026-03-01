@@ -10,6 +10,8 @@ import { resolveLocale, translate } from "@/lib/i18n";
 import prisma from "@/lib/prisma";
 import SubmitWithOverlay from "@/app/components/form-pending-overlay";
 import TransactionsManager from "./transactions-manager";
+import { AdminAnnouncement } from "./types";
+import AnnouncementEditButton from "./AnnouncementEditButton";
 
 function formatCurrency(amount: number) {
   return amount.toLocaleString("en-EG", {
@@ -46,21 +48,6 @@ type AdminSearchParams = {
   q?: string;
   includeDeleted?: string;
   lang?: string;
-};
-
-type AdminAnnouncement = {
-  id: number;
-  title: string;
-  titleAr: string | null;
-  body: string | null;
-  bodyAr: string | null;
-  mediaUrl: string | null;
-  youtubeId: string | null;
-  startsAt: Date;
-  endsAt: Date | null;
-  status: "DRAFT" | "SCHEDULED" | "ACTIVE" | "EXPIRED" | "CANCELLED";
-  createdAt: Date;
-  updatedAt: Date;
 };
 
 export default async function AdminPage({ searchParams }: { searchParams?: Promise<AdminSearchParams> }) {
@@ -301,6 +288,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                   placeholder="2026-03-01T12:00"
                   disabled={!announcementAvailable || !isDomainAdmin}
                 />
+                <p className="text-[11px] text-amber-100/80">Times are saved as Africa/Cairo (UTC+02).</p>
               </label>
               <label className="space-y-2 text-sm font-medium text-slate-100">
                 {t("announcementEndLabel")}
@@ -311,6 +299,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                   placeholder="2026-03-05T18:00"
                   disabled={!announcementAvailable || !isDomainAdmin}
                 />
+                <p className="text-[11px] text-amber-100/80">Leave blank for open-ended; Cairo time.</p>
               </label>
               <label className="space-y-2 text-sm font-medium text-slate-100">
                 {t("announcementStatusLabel")}
@@ -421,12 +410,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                           disabled={!canManageAnnouncements || item.derivedStatus === "ACTIVE"}
                         />
                       </form>
-                      {/* Client-side edit button for modal editing */}
-                      {/* Client-side edit button for modal editing */}
-                      {/* Dynamically import AnnouncementEditButton to avoid SSR reference error */}
-                      {typeof window !== "undefined" && require("./AnnouncementEditButton").default && (
-                        React.createElement(require("./AnnouncementEditButton").default, { item })
-                      )}
+                      <AnnouncementEditButton item={item as AdminAnnouncement} />
                       <form action={adminCancelAnnouncementSchedule} className="inline-flex" hidden={!canManageAnnouncements || item.derivedStatus === "CANCELLED" || item.derivedStatus === "EXPIRED"}>
                         <input type="hidden" name="id" value={item.id} />
                         <SubmitWithOverlay
