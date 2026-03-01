@@ -11,22 +11,53 @@ import prisma from "@/lib/prisma";
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
-const moneySchema = z
-  .string()
-  .trim()
-  .transform((val) => Number(val.replace(",", ".")))
-  .pipe(z.number().positive());
+const arabicDigitMap: Record<string, string> = {
+  "٠": "0",
+  "١": "1",
+  "٢": "2",
+  "٣": "3",
+  "٤": "4",
+  "٥": "5",
+  "٦": "6",
+  "٧": "7",
+  "٨": "8",
+  "٩": "9",
+};
 
-const adminMoneySchema = z
-  .string()
-  .trim()
-  .transform((val) => Number(val))
-  .pipe(z.number().nonnegative());
+function normalizeNumericInput(value: unknown): number {
+  if (typeof value === "number") return value;
+  if (typeof value !== "string") return Number.NaN;
+  let normalized = value.trim().replace(/[٠-٩]/g, (d) => arabicDigitMap[d] || d);
 
-const idSchema = z
-  .string()
-  .transform((val) => Number(val))
-  .pipe(z.number().int().positive());
+  const hasDotDecimal = normalized.includes(".") || normalized.includes("٫");
+  if (hasDotDecimal) {
+    // Keep dot as decimal; strip thousands separators; map Arabic decimal to dot.
+    normalized = normalized.replace(/[,٬،]/g, "").replace(/٫/g, ".");
+  } else if (normalized.includes(",")) {
+    // If no dot but comma exists, treat comma as decimal (e.g., 123,45).
+    normalized = normalized.replace(/[,٬،]/g, ".");
+  } else {
+    // No decimal separators; just strip thousands commas if any.
+    normalized = normalized.replace(/[,٬،]/g, "");
+  }
+
+  normalized = normalized.replace(/\s+/g, "");
+  return Number(normalized);
+}
+
+const moneySchema = z.preprocess(normalizeNumericInput, z.number().positive());
+const adminMoneySchema = z.preprocess(normalizeNumericInput, z.number().nonnegative());
+const idSchema = z.preprocess(normalizeNumericInput, z.number().int().positive());
+
+const optionalTrimmedString = z.preprocess(
+  (val) => {
+    if (val === undefined || val === null) return undefined;
+    if (typeof val === "string") return val.trim();
+    if (Array.isArray(val)) return String(val[0]).trim();
+    return String(val).trim();
+  },
+  z.string().optional()
+);
 
 const deleteTxnSchema = z.object({
   transactionId: idSchema,
@@ -626,10 +657,10 @@ export async function deposit(formData: FormData) {
     .object({
       accountId: idSchema,
       amount: moneySchema,
-      description: z.string().optional(),
+      description: optionalTrimmedString,
       source: z.enum(["Mobile Wallet", "Credit/Debit Card"]),
-      walletNumber: z.string().trim().optional(),
-      cardBank: z.string().trim().optional(),
+      walletNumber: optionalTrimmedString,
+      cardBank: optionalTrimmedString,
     })
     .safeParse({
       accountId: formData.get("accountId"),
@@ -641,12 +672,18 @@ export async function deposit(formData: FormData) {
     });
 
   if (!parsed.success) {
-    dashRedirect({ depositError: "Invalid deposit request" });
+    const firstIssue = parsed.error.issues?.[0];
+    const field = firstIssue?.path?.join(".") || "fields";
+    const message = firstIssue?.message || "Invalid deposit request";
+    console.warn("[deposit] invalid request", { field, message, issues: parsed.error.issues });
+    dashRedirect({ depositError: `Invalid deposit: ${field}` });
     return;
   }
 
   const { accountId, amount, description, source, walletNumber, cardBank } = parsed.data;
-  const walletDigits = (walletNumber || "").replace(/\D/g, "");
+  const walletDigits = (walletNumber || "")
+    .replace(/[٠-٩]/g, (d) => arabicDigitMap[d] || "")
+    .replace(/\D/g, "");
   const needsWallet = source === "Mobile Wallet";
   const needsCardBank = source === "Credit/Debit Card";
   if (needsWallet && walletDigits.length !== 11) {
