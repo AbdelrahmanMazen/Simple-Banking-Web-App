@@ -246,6 +246,8 @@ const messages = {
     announcementMediaAlt: "Announcement media",
     announcementUpdatedAt: "Updated at {date}",
     announcementArabicVariant: "Arabic variant",
+    designedByLabel: "Designed by",
+    designedByName: "Abdelrahman",
   },
   ar: {
     simpleBank: "بنك بسيط",
@@ -492,6 +494,8 @@ const messages = {
     announcementMediaAlt: "وسائط الإعلان",
     announcementUpdatedAt: "تم التحديث في {date}",
     announcementArabicVariant: "النسخة العربية",
+    designedByLabel: "تصميم بواسطة",
+    designedByName: "عبدالرحمن",
   },
 } as const;
 

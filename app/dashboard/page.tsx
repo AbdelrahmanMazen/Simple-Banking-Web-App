@@ -294,7 +294,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <span className="sr-only">{t("simpleBank")}</span>
-              <img src="/logo-simplebank.svg" alt="SimpleBank logo" className="h-9 w-auto" />
+              <img src="/Logo/Layer1.png" alt="SimpleBank logo" className="h-16 w-auto" />
+              <div className={`flex flex-col leading-tight ${locale === "ar" ? "text-right" : "text-left"}`}>
+                <span className={locale === "ar" ? "text-[11px] text-slate-400" : "text-[11px] uppercase tracking-[0.2em] text-slate-400"}>
+                  {t("designedByLabel")}
+                </span>
+                <span className={locale === "ar" ? "text-base text-slate-100" : "signature-font text-base text-slate-100"}>
+                  {t("designedByName")}
+                </span>
+              </div>
             </div>
             <h1 className="text-3xl font-semibold text-white sm:text-4xl">
               {t("welcomeBack", { name: user.name })}

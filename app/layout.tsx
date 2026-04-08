@@ -13,9 +13,9 @@ export const metadata: Metadata = {
   title: "SimpleBank",
   description: "Lightweight banking demo with accounts, deposits, and withdrawals.",
   icons: {
-    icon: "/logo-simplebank-icon.svg",
-    shortcut: "/logo-simplebank-icon.svg",
-    apple: "/logo-simplebank-icon.svg",
+    icon: "/Logo/Layer1.png",
+    shortcut: "/Logo/Layer1.png",
+    apple: "/Logo/Layer1.png",
   },
 };
 
@@ -36,6 +36,8 @@ export default async function RootLayout({
   const legalTitle = translate(locale, "legalNoticeTitle");
   const legalBody = translate(locale, "legalNoticeBody");
   const footerCopyright = translate(locale, "footerCopyright");
+  const designedByLabel = translate(locale, "designedByLabel");
+  const designedByName = translate(locale, "designedByName");
 
   return (
     <html lang={locale} dir={locale === "ar" ? "rtl" : "ltr"}>
@@ -67,8 +69,16 @@ export default async function RootLayout({
         <div className="relative z-10 min-h-screen">{children}</div>
         <footer className="relative z-20 border-t border-white/5 bg-black/20 px-6 py-5 backdrop-blur-md">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 text-sm text-slate-200/85">
-            <div className="flex items-center gap-2">
-              <img src="/logo-simplebank.svg" alt="SimpleBank logo" className="h-8 w-auto" />
+            <div className={`flex items-center gap-3 ${locale === "ar" ? "flex-row-reverse text-right" : "text-left"}`}>
+              <img src="/Logo/Layer1.png" alt="SimpleBank logo" className="h-14 w-auto" />
+              <div className={`flex flex-col leading-tight ${locale === "ar" ? "text-right" : "text-left"}`}>
+                <span className={locale === "ar" ? "text-[11px] text-slate-400" : "text-[11px] uppercase tracking-[0.2em] text-slate-400"}>
+                  {designedByLabel}
+                </span>
+                <span className={locale === "ar" ? "text-base text-slate-100" : "signature-font text-base text-slate-100"}>
+                  {designedByName}
+                </span>
+              </div>
             </div>
             <div className="text-xs text-slate-200">{footerCopyright}</div>
             <div className="text-xs text-slate-300">{legalTitle}</div>
