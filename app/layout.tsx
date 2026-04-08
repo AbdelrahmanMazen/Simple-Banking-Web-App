@@ -13,9 +13,9 @@ export const metadata: Metadata = {
   title: "SimpleBank",
   description: "Lightweight banking demo with accounts, deposits, and withdrawals.",
   icons: {
-    icon: "/Logo/Layer1.png",
-    shortcut: "/Logo/Layer1.png",
-    apple: "/Logo/Layer1.png",
+    icon: "/icon.png",
+    shortcut: "/icon.png",
+    apple: "/icon.png",
   },
 };
 
