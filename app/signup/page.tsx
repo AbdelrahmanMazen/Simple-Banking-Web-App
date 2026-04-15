@@ -25,7 +25,7 @@ export default async function SignupPage() {
       <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center gap-6 px-6 py-14">
         <div className="glass-lite rounded-3xl p-[1.5px]">
           <div className="rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-white/10 to-white/0 p-8">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-2">
                 <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-100 ring-1 ring-emerald-400/30">
                   <span className="h-2 w-2 rounded-full bg-emerald-300" /> {t("authSecureBadge")}
@@ -34,18 +34,19 @@ export default async function SignupPage() {
                 <h1 className="text-3xl font-semibold text-white">{t("authSignupTitle")}</h1>
                 <p className="mt-1 text-slate-300">{t("authSignupSubtitle")}</p>
               </div>
-              <Link
-                href="/"
-                className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/20 transition hover:-translate-y-0.5 hover:bg-white/20"
-              >
-                {t("authSignupHaveAccount")}
-              </Link>
+              <div className="flex items-center gap-2">
+                <LanguageToggle locale={locale} />
+                <Link
+                  href="/"
+                  className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/20 transition hover:-translate-y-0.5 hover:bg-white/20"
+                >
+                  {t("authSignupHaveAccount")}
+                </Link>
+              </div>
             </div>
-            <div className="mt-4 flex justify-end">
-              <LanguageToggle locale={locale} />
-            </div>
+            <div className="mt-6 border-t border-white/5 pt-6">
             {unverifiedUser ? (
-              <div className="mt-6 space-y-4 rounded-2xl border border-amber-300/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+              <div className="space-y-4 rounded-2xl border border-amber-300/30 bg-amber-500/10 p-4 text-sm text-amber-100">
                 <p className="font-semibold">{t("authUnverifiedNotice", { email: unverifiedUser.email })}</p>
                 <div className="flex flex-wrap gap-3">
                   <Link
@@ -65,12 +66,13 @@ export default async function SignupPage() {
                 </div>
               </div>
             ) : (
-              <form action={signupAction} className="mt-6 space-y-4">
+              <form action={signupAction} className="space-y-4">
                 <label className="space-y-2 text-sm text-slate-200">
                   {t("authName")}
                   <input
                     name="name"
                     required
+                    autoComplete="name"
                     placeholder="Jane Doe"
                     className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-slate-400 focus:border-white/30 focus:outline-none"
                   />
@@ -81,6 +83,7 @@ export default async function SignupPage() {
                     name="email"
                     type="email"
                     required
+                    autoComplete="email"
                     placeholder="you@example.com"
                     className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-slate-400 focus:border-white/30 focus:outline-none"
                   />
@@ -91,6 +94,7 @@ export default async function SignupPage() {
                     name="password"
                     type="password"
                     required
+                    autoComplete="new-password"
                     placeholder="••••••••"
                     className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-slate-400 focus:border-white/30 focus:outline-none"
                   />
@@ -104,6 +108,7 @@ export default async function SignupPage() {
                 <p className="text-xs text-slate-400">{t("authVerifyHint")}</p>
               </form>
             )}
+            </div>
           </div>
         </div>
       </main>

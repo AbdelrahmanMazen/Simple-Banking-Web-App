@@ -290,7 +290,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const outgoingPending = outgoingRequests.filter((r: RequestRow) => r.status === "PENDING");
 
   return (
-    <div className="min-h-screen bg-slate-950/60 text-white md:backdrop-blur-[2px]">
+    <div className="min-h-screen bg-slate-950/60 text-white">
       <div className="absolute inset-0 -z-10 overflow-hidden opacity-60">
         <div className="floating-blur" />
         <div className="floating-blur delay-300 left-1/3" />
@@ -338,7 +338,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-            <div className="flex w-full flex-1 items-center gap-3 rounded-2xl bg-gradient-to-r from-amber-500/25 via-amber-400/20 to-rose-500/15 px-4 py-4 text-sm text-amber-50 shadow-xl shadow-amber-500/25 ring-1 ring-amber-300/40 backdrop-blur-sm md:backdrop-blur sm:min-w-[260px]">
+            <div className="flex w-full flex-1 items-center gap-3 rounded-2xl bg-gradient-to-r from-amber-500/25 via-amber-400/20 to-rose-500/15 px-4 py-4 text-sm text-amber-50 shadow-xl shadow-amber-500/25 ring-1 ring-amber-300/40 sm:min-w-[260px]">
               <AlertOctagon className="h-5 w-5 text-amber-200" />
               <div className="flex flex-col gap-1 leading-5">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-100/80">Notice</span>

@@ -25,7 +25,7 @@ export default async function VerifyPage({ searchParams }: { searchParams?: Sear
       <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center gap-6 px-6 py-14">
         <div className="glass-lite rounded-3xl p-[1.5px]">
           <div className="rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-white/10 to-white/0 p-8">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.2em] text-slate-400">SimpleBank</p>
                 <h1 className="text-3xl font-semibold text-white">Verify your email</h1>
@@ -38,7 +38,8 @@ export default async function VerifyPage({ searchParams }: { searchParams?: Sear
                 Back to sign in
               </Link>
             </div>
-            <form action={verifyAction} className="mt-6 space-y-4">
+            <div className="mt-6 border-t border-white/5 pt-6">
+            <form action={verifyAction} className="space-y-4">
               <label className="space-y-2 text-sm text-slate-200">
                 Email
                 <input
@@ -46,6 +47,7 @@ export default async function VerifyPage({ searchParams }: { searchParams?: Sear
                   type="email"
                   required
                   defaultValue={presetEmail}
+                  autoComplete="email"
                   className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-slate-400 focus:border-white/30 focus:outline-none"
                   placeholder="you@example.com"
                 />
@@ -55,8 +57,10 @@ export default async function VerifyPage({ searchParams }: { searchParams?: Sear
                 <input
                   name="code"
                   required
-                  minLength={4}
+                  minLength={6}
                   maxLength={6}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
                   className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-slate-400 focus:border-white/30 focus:outline-none tracking-[0.2em]"
                   placeholder="123456"
                 />
@@ -70,6 +74,7 @@ export default async function VerifyPage({ searchParams }: { searchParams?: Sear
               </button>
               <p className="text-xs text-slate-400">Didn’t get it? Check spam or try signing in to trigger another code.</p>
             </form>
+            </div>
           </div>
         </div>
       </main>

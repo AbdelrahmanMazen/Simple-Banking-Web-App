@@ -66,6 +66,17 @@ body {
   }
 }
 
+@media (max-width: 768px) {
+  .glass-lite {
+    backdrop-filter: none;
+  }
+
+  .floating-blur {
+    animation: none;
+    filter: blur(28px);
+  }
+}
+
 .floating-blur {
   position: absolute;
   width: 28rem;
@@ -113,5 +124,20 @@ body {
   .floating-blur {
     animation: none;
     transform: translateZ(0);
+  }
+}
+
+@media (prefers-reduced-data: reduce) {
+  .floating-blur {
+    animation: none;
+    filter: blur(24px);
+  }
+}
+
+@media (hover: none) {
+  .glass-panel:hover {
+    transform: none;
+    box-shadow: var(--shadow-soft);
+    border-color: var(--panel-border);
   }
 }

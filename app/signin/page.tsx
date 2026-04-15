@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 
 export default async function SigninPage() {
   const user = await getCurrentUser();
-    if (user?.isVerified) redirect("/dashboard");
+  if (user?.isVerified) redirect("/dashboard");
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
@@ -17,7 +17,7 @@ export default async function SigninPage() {
       <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center gap-6 px-6 py-14">
         <div className="glass-lite rounded-3xl p-[1.5px]">
           <div className="rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-white/10 to-white/0 p-8">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-2">
                 <div className="inline-flex items-center gap-2 rounded-full bg-sky-500/15 px-3 py-1 text-xs font-semibold text-sky-100 ring-1 ring-sky-400/30">
                   <span className="h-2 w-2 rounded-full bg-sky-300" /> Secure sign in
@@ -33,6 +33,7 @@ export default async function SigninPage() {
                 Need an account?
               </Link>
             </div>
+            <div className="mt-6 border-t border-white/5 pt-6">
             {user && !user.isVerified ? (
               <div className="mt-6 space-y-4 rounded-2xl border border-amber-300/30 bg-amber-500/10 p-4 text-sm text-amber-100">
                 <p className="font-semibold">You are signed in as {user.email}, but the email is not verified.</p>
@@ -54,13 +55,14 @@ export default async function SigninPage() {
                 </div>
               </div>
             ) : (
-              <form action={signinAction} className="mt-6 space-y-4">
+              <form action={signinAction} className="space-y-4">
                 <label className="space-y-2 text-sm text-slate-200">
                   Email
                   <input
                     name="email"
                     type="email"
                     required
+                    autoComplete="email"
                     placeholder="you@example.com"
                     className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-slate-400 focus:border-white/30 focus:outline-none"
                   />
@@ -71,6 +73,7 @@ export default async function SigninPage() {
                     name="password"
                     type="password"
                     required
+                    autoComplete="current-password"
                     placeholder="••••••••"
                     className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-slate-400 focus:border-white/30 focus:outline-none"
                   />
@@ -83,6 +86,7 @@ export default async function SigninPage() {
                 </button>
               </form>
             )}
+            </div>
           </div>
         </div>
       </main>
