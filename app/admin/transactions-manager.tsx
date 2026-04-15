@@ -94,7 +94,7 @@ export default function TransactionsManager({ transactions, isDomainAdmin, local
         </form>
       </div>
 
-      <div className="grid gap-3">
+      <div className="grid gap-3 cv-auto">
         {transactions.map((txn) => {
           const isDeleted = Boolean(txn.deletedAt);
           const createdAt = new Date(txn.createdAt).toLocaleString();

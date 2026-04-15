@@ -17,14 +17,14 @@ export default async function Home() {
   const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) => translate(locale, key, params);
 
   return (
-    <div className="min-h-screen bg-slate-950/60 text-white backdrop-blur-[2px]">
+    <div className="min-h-screen bg-slate-950/60 text-white md:backdrop-blur-[2px]">
       <div className="absolute inset-0 -z-10 overflow-hidden opacity-60">
         <div className="floating-blur" />
         <div className="floating-blur delay-300 left-1/3" />
         <div className="floating-blur delay-500 left-2/3" />
       </div>
       <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center gap-6 px-6 py-14">
-        <div className="glass-panel rounded-3xl p-[1.5px] shadow-2xl shadow-black/40">
+        <div className="glass-lite rounded-3xl p-[1.5px]">
           <div className="rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-white/10 to-white/0 p-8">
             <div className="flex items-center justify-between gap-4">
               <div>

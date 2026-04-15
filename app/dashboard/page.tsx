@@ -290,7 +290,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const outgoingPending = outgoingRequests.filter((r: RequestRow) => r.status === "PENDING");
 
   return (
-    <div className="min-h-screen bg-slate-950/60 text-white backdrop-blur-[2px]">
+    <div className="min-h-screen bg-slate-950/60 text-white md:backdrop-blur-[2px]">
       <div className="absolute inset-0 -z-10 overflow-hidden opacity-60">
         <div className="floating-blur" />
         <div className="floating-blur delay-300 left-1/3" />
@@ -338,7 +338,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-            <div className="flex w-full flex-1 items-center gap-3 rounded-2xl bg-gradient-to-r from-amber-500/25 via-amber-400/20 to-rose-500/15 px-4 py-4 text-sm text-amber-50 shadow-xl shadow-amber-500/25 ring-1 ring-amber-300/40 backdrop-blur sm:min-w-[260px]">
+            <div className="flex w-full flex-1 items-center gap-3 rounded-2xl bg-gradient-to-r from-amber-500/25 via-amber-400/20 to-rose-500/15 px-4 py-4 text-sm text-amber-50 shadow-xl shadow-amber-500/25 ring-1 ring-amber-300/40 backdrop-blur-sm md:backdrop-blur sm:min-w-[260px]">
               <AlertOctagon className="h-5 w-5 text-amber-200" />
               <div className="flex flex-col gap-1 leading-5">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-100/80">Notice</span>
@@ -413,7 +413,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </header>
 
         <section className="grid gap-6 xl:grid-cols-12">
-          <div className="glass-panel col-span-2 rounded-3xl p-[1.5px] shadow-2xl shadow-black/30 xl:col-span-8">
+          <div className="glass-lite col-span-2 rounded-3xl p-[1.5px] xl:col-span-8">
             <div className="rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-white/5 to-white/0 p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -442,7 +442,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             </div>
           </div>
 
-          <div className="glass-panel h-full rounded-3xl p-[1.5px] shadow-2xl shadow-black/30 xl:col-span-4">
+          <div className="glass-lite h-full rounded-3xl p-[1.5px] xl:col-span-4">
             <div className="relative flex h-full flex-col overflow-hidden rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-rose-500/15 via-amber-500/10 to-white/0 p-6">
               <div className="pointer-events-none absolute inset-0">
                 <div className="absolute left-1/4 top-0 h-32 w-32 rounded-full bg-rose-500/20 blur-3xl" />
@@ -507,7 +507,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </section>
 
         <section className="grid gap-6 xl:grid-cols-12">
-          <div className="glass-panel rounded-3xl p-[1.5px] shadow-2xl shadow-black/30 xl:col-span-7">
+          <div className="glass-lite rounded-3xl p-[1.5px] xl:col-span-7">
             <div className="space-y-6 rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-white/5 to-white/0 p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -716,7 +716,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             </div>
           </div>
 
-          <div className="glass-panel rounded-3xl p-[1.5px] shadow-2xl shadow-black/30 xl:col-span-5">
+          <div className="glass-lite rounded-3xl p-[1.5px] xl:col-span-5">
             <div className="space-y-4 rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-white/5 to-white/0 p-6">
               <div className="rounded-2xl bg-white/5 p-5 ring-1 ring-white/10">
                 <div className="flex items-center justify-between">
@@ -862,13 +862,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </div>
         </section>
 
-        <section className="glass-panel rounded-3xl p-[1.5px] shadow-2xl shadow-black/30">
+        <section className="glass-lite rounded-3xl p-[1.5px]">
           <div className="rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-white/5 to-white/0 p-6">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-white">{t("recentActivity")}</h2>
               <p className="text-sm text-slate-400">{t("latestTransactions")}</p>
             </div>
-            <div className="mt-4 divide-y divide-white/5">
+            <div className="mt-4 divide-y divide-white/5 cv-auto">
               {transactions.map((txn: TxnWithAccount) => (
                 <div key={txn.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>

@@ -48,7 +48,7 @@ export default async function AccountSettingsPage({ searchParams }: { searchPara
           </div>
         </header>
 
-        <div className="glass-panel rounded-3xl p-[1.5px] shadow-2xl shadow-black/30">
+        <div className="glass-lite rounded-3xl p-[1.5px]">
           <div className="rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-white/5 to-white/0 p-8">
             <div className="flex flex-col gap-2">
               <p className="text-sm uppercase tracking-[0.2em] text-slate-400">{t("yourProfile")}</p>

@@ -195,7 +195,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
           </div>
         </header>
 
-        <section className="glass-panel rounded-3xl p-[1.5px] shadow-2xl shadow-black/30">
+        <section className="glass-lite rounded-3xl p-[1.5px]">
           <div className="rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-amber-500/10 to-white/0 p-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
@@ -383,7 +383,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                 </span>
               </div>
 
-              <div className="mt-3 divide-y divide-white/5">
+              <div className="mt-3 divide-y divide-white/5 cv-auto">
                 {announcementSchedules.map((item) => (
                   <div key={item.id} className="flex flex-col gap-3 py-3 md:flex-row md:items-center md:justify-between md:gap-4">
                     <div className="space-y-1">
@@ -455,29 +455,29 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
         </section>
 
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="glass-panel rounded-2xl p-5 ring-1 ring-white/10">
+          <div className="glass-lite rounded-2xl p-5 ring-1 ring-white/10">
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{t("adminUsersLabel")}</p>
             <p className="mt-2 text-3xl font-semibold text-white">{totalUsers}</p>
             <p className="text-xs text-slate-500">{t("adminUsersHint")}</p>
           </div>
-          <div className="glass-panel rounded-2xl p-5 ring-1 ring-white/10">
+          <div className="glass-lite rounded-2xl p-5 ring-1 ring-white/10">
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{t("adminAccountsLabel")}</p>
             <p className="mt-2 text-3xl font-semibold text-white">{totalAccounts}</p>
             <p className="text-xs text-slate-500">{t("adminAccountsHint")}</p>
           </div>
-          <div className="glass-panel rounded-2xl p-5 ring-1 ring-white/10">
+          <div className="glass-lite rounded-2xl p-5 ring-1 ring-white/10">
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{t("adminTransactionsLabel")}</p>
             <p className="mt-2 text-3xl font-semibold text-white">{totalActiveTransactions}</p>
             <p className="text-xs text-slate-500">{t("adminTransactionsHint", { count: totalDeletedTransactions })}</p>
           </div>
-          <div className="glass-panel rounded-2xl p-5 ring-1 ring-white/10">
+          <div className="glass-lite rounded-2xl p-5 ring-1 ring-white/10">
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{t("adminBalanceLabel")}</p>
             <p className="mt-2 text-3xl font-semibold text-white">{formatCurrency(totalBalanceCents / 100)}</p>
             <p className="text-xs text-slate-500">{t("adminBalanceHint")}</p>
           </div>
         </section>
 
-        <section className="glass-panel rounded-3xl p-[1.5px] shadow-2xl shadow-black/30">
+        <section className="glass-lite rounded-3xl p-[1.5px]">
           <div className="rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-rose-500/10 to-white/0 p-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
@@ -526,7 +526,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
           </div>
         </section>
 
-        <section className="glass-panel rounded-3xl p-[1.5px] shadow-2xl shadow-black/30">
+        <section className="glass-lite rounded-3xl p-[1.5px]">
           <div className="rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-white/5 to-white/0 p-6">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
@@ -618,7 +618,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
           </div>
         </section>
 
-        <section className="glass-panel rounded-3xl p-[1.5px] shadow-2xl shadow-black/30">
+        <section className="glass-lite rounded-3xl p-[1.5px]">
           <div className="rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-white/5 to-white/0 p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -627,7 +627,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
               </div>
               <Users className="h-5 w-5 text-emerald-200" />
             </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 cv-auto">
               {accounts.map((acct) => (
                 <div key={acct.id} className="rounded-2xl border border-white/5 bg-white/5 px-4 py-3 ring-1 ring-white/10">
                   <div className="flex items-center justify-between">
@@ -647,7 +647,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
           </div>
         </section>
 
-        <section className="glass-panel rounded-3xl p-[1.5px] shadow-2xl shadow-black/30">
+        <section className="glass-lite rounded-3xl p-[1.5px]">
           <div className="rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-emerald-500/5 to-white/0 p-6">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
@@ -699,7 +699,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
           </div>
         </section>
 
-        <section className="glass-panel rounded-3xl p-[1.5px] shadow-2xl shadow-black/30">
+        <section className="glass-lite rounded-3xl p-[1.5px]">
           <div className="rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-white/5 to-white/0 p-6">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
@@ -760,7 +760,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
           </div>
         </section>
 
-        <section className="glass-panel rounded-3xl p-[1.5px] shadow-2xl shadow-black/30">
+        <section className="glass-lite rounded-3xl p-[1.5px]">
           <div className="rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-rose-500/5 to-white/0 p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
@@ -830,7 +830,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                 </SubmitWithOverlay>
               </form>
             </div>
-            <div className="mt-4 divide-y divide-white/5">
+            <div className="mt-4 divide-y divide-white/5 cv-auto">
               {deletedTx.map((txn) => (
                 <div key={txn.id} className="flex flex-col gap-2 py-3 md:flex-row md:items-center md:justify-between md:gap-6">
                   <div className="space-y-1">

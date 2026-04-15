@@ -33,7 +33,7 @@ export default function SubmitWithOverlay({ label, pendingLabel, overlayMessage,
     <>
       {showOverlay &&
         createPortal(
-          <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-slate-950/75 backdrop-blur-md px-6">
+          <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-slate-950/75 px-6">
             <div className="space-y-3 text-center text-slate-100">
               <Loader2 className="mx-auto h-10 w-10 animate-spin text-emerald-300" />
               <p className="text-lg font-semibold">{overlayMessage || "Processing..."}</p>

@@ -19,7 +19,7 @@ export default function LegalNoticeBanner({ title, body }: Props) {
 
   return (
     <div className="fixed inset-x-0 bottom-4 z-30 px-4">
-      <div className="mx-auto flex max-w-5xl items-start gap-3 rounded-2xl border border-red-500/40 bg-gradient-to-br from-red-900/85 via-red-800/80 to-red-900/90 px-4 py-3 text-sm text-red-50 shadow-[0_25px_60px_rgba(248,113,113,0.45)] backdrop-blur-2xl ring-1 ring-red-300/10" role="alert">
+      <div className="glass-lite mx-auto flex max-w-5xl items-start gap-3 rounded-2xl border-red-500/40 bg-gradient-to-br from-red-900/85 via-red-800/80 to-red-900/90 px-4 py-3 text-sm text-red-50 ring-1 ring-red-300/10" role="alert">
         <span className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white" aria-hidden>
           !
         </span>

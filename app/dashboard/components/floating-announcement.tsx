@@ -40,7 +40,7 @@ export default function FloatingAnnouncement({ announcement, locale }: Props) {
 			dir={isRTL ? "rtl" : "ltr"}
 			className={`sticky top-20 z-40 mx-auto h-0 w-full max-w-4xl overflow-visible px-3 sm:px-6 pointer-events-none ${isRTL ? "text-right" : ""}`}
 		>
-			<div className="relative top-3 overflow-hidden rounded-3xl border border-white/15 bg-slate-950/90 text-white shadow-2xl shadow-black/40 ring-1 ring-amber-300/30 backdrop-blur-xl pointer-events-auto">
+			<div className="glass-lite relative top-3 overflow-hidden rounded-3xl text-white ring-1 ring-amber-300/30 pointer-events-auto">
 				<div className="flex flex-wrap items-start justify-between gap-3 bg-gradient-to-r from-amber-500/20 via-amber-400/15 to-rose-500/10 px-4 py-3 sm:flex-nowrap sm:gap-4 sm:px-6">
 					<div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-100 ring-1 ring-white/20">
 						{t("announcementBadge")}

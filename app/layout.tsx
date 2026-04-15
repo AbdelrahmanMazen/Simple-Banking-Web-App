@@ -67,7 +67,7 @@ export default async function RootLayout({
           </div>
         )}
         <div className="relative z-10 min-h-screen">{children}</div>
-        <footer className="relative z-20 border-t border-white/5 bg-black/20 px-6 py-5 backdrop-blur-md">
+        <footer className="relative z-20 border-t border-white/5 bg-black/20 px-6 py-5 backdrop-blur-sm md:backdrop-blur-md">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 text-sm text-slate-200/85">
             <div className={`flex items-center gap-3 ${locale === "ar" ? "flex-row-reverse text-right" : "text-left"}`}>
               <img src="/Logo/Layer1.png" alt="SimpleBank logo" className="h-14 w-auto" />

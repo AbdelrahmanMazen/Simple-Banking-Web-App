@@ -23,7 +23,7 @@ export default async function VerifyPage({ searchParams }: { searchParams?: Sear
         <div className="floating-blur delay-500 left-2/3" />
       </div>
       <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center gap-6 px-6 py-14">
-        <div className="glass-panel rounded-3xl p-[1.5px] shadow-2xl shadow-black/40">
+        <div className="glass-lite rounded-3xl p-[1.5px]">
           <div className="rounded-[calc(1.5rem-1.5px)] bg-gradient-to-br from-white/10 to-white/0 p-8">
             <div className="flex items-center justify-between">
               <div>
