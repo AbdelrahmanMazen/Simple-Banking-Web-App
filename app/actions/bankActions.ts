@@ -270,7 +270,7 @@ async function ensureOverdraftProgress(
 
     if (owner?.email) {
       const dueAt = new Date(anchorDate.getTime() + 30 * MS_PER_DAY);
-      await sendOverdraftWarningEmail({
+      void sendOverdraftWarningEmail({
         to: owner.email,
         userName: owner.name,
         accountName: account.name || "Account",
@@ -320,7 +320,7 @@ async function ensureOverdraftProgress(
 
     if (ownerUser?.email) {
       const dueAt = new Date(anchorDate.getTime() + 30 * MS_PER_DAY);
-      await sendOverdraftWarningEmail({
+      void sendOverdraftWarningEmail({
         to: ownerUser.email,
         userName: ownerUser.name,
         accountName: account.name || "Account",
@@ -359,7 +359,7 @@ async function recordOverdraftAlert(
 
   if (owner?.user?.email) {
     const dueAt = new Date(created.createdAt.getTime() + 30 * MS_PER_DAY);
-    await sendOverdraftWarningEmail({
+    void sendOverdraftWarningEmail({
       to: owner.user.email,
       userName: owner.user.name,
       accountName: owner.name || "Account",
@@ -635,7 +635,7 @@ export async function createMoneyRequest(formData: FormData) {
     },
   });
 
-  await sendMoneyRequestEmail({
+  void sendMoneyRequestEmail({
     to: target.email,
     targetName: target.name,
     requesterName: user.name,
@@ -780,7 +780,7 @@ export async function deposit(formData: FormData) {
   revalidateBankViews();
 
   // Send receipt email (best-effort)
-  await sendTransactionEmail({
+  void sendTransactionEmail({
     to: user.email,
     userName: user.name,
     accountName: accountName || "Account",
@@ -864,7 +864,7 @@ export async function withdraw(formData: FormData) {
 
   revalidateBankViews();
 
-  await sendTransactionEmail({
+  void sendTransactionEmail({
     to: user.email,
     userName: user.name,
     accountName: accountName || "Account",
@@ -953,7 +953,7 @@ export async function acceptMoneyRequest(formData: FormData) {
     });
   });
 
-  await sendRequestStatusEmail({
+  void sendRequestStatusEmail({
     to: req.requester.email,
     requesterName: req.requester.name,
     responderName: user.name,
@@ -984,7 +984,7 @@ export async function rejectMoneyRequest(formData: FormData) {
 
   await prisma.request.update({ where: { id: req.id }, data: { status: "REJECTED", rejectedAt: new Date() } });
 
-  await sendRequestStatusEmail({
+  void sendRequestStatusEmail({
     to: req.requester.email,
     requesterName: req.requester.name,
     responderName: user.name,
@@ -1201,7 +1201,7 @@ export async function transfer(formData: FormData) {
     dashRedirect({ transferError: "Transfer failed" });
   }
 
-  await sendTransactionEmail({
+  void sendTransactionEmail({
     to: user.email,
     userName: user.name,
     accountName: sourceAccountName || "Account",
@@ -1215,7 +1215,7 @@ export async function transfer(formData: FormData) {
   });
 
   if (receiverEmail && creditedCents > 0) {
-    await sendTransactionEmail({
+    void sendTransactionEmail({
       to: receiverEmail,
       userName: receiverUserName || "Customer",
       accountName: receiverAccountName || "Account",

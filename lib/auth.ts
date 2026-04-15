@@ -44,7 +44,7 @@ export async function createUser(email: string, name: string, password: string) 
     return createdUser;
   });
 
-  await sendVerificationEmail(email, verificationCode);
+  void sendVerificationEmail(email, verificationCode);
 
   return user;
 }

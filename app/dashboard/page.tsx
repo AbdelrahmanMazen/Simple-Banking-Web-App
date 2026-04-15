@@ -2,6 +2,7 @@ import { AlertOctagon, ArrowUpFromLine, Clock3, HandCoins, Handshake, LogOut, Se
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import { cache } from "react";
 import { acceptMoneyRequest, createMoneyRequest, rejectMoneyRequest, settleLoanRequestPenalties, settleUserOverdrafts, transfer, updateMostafaDebt, withdraw } from "@/app/actions/bankActions";
 import { signoutAction } from "@/app/actions/authActions";
 import { getCurrentUser } from "@/lib/auth";
@@ -50,12 +51,6 @@ type TxnWithAccount = {
   account: { name: string };
 };
 
-type FeaturedAccount = {
-  name: string;
-  balanceCents: number;
-  user: { name: string };
-};
-
 type AnnouncementRecord = {
   title: string;
   titleAr: string | null;
@@ -67,13 +62,6 @@ type AnnouncementRecord = {
   endsAt: Date | null;
   status: "DRAFT" | "SCHEDULED" | "ACTIVE" | "EXPIRED" | "CANCELLED";
   updatedAt: Date;
-};
-
-type DebtAccount = {
-  id: number;
-  name: string;
-  balanceCents: number;
-  user: { name: string };
 };
 
 type TargetAccount = { name: string; user: { name: string } };
@@ -91,38 +79,7 @@ type RequestRow = {
   penaltyAccruedCents: number;
 };
 
-export default async function DashboardPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const resolvedParams = (await searchParams) ?? {};
-  const cookieStore = await cookies();
-  const locale = resolveLocale(resolvedParams.lang ?? cookieStore.get("lang")?.value ?? "en");
-  const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) => translate(locale, key, params);
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect("/");
-  }
-  if (!user.isVerified) {
-    redirect(`/verify?email=${encodeURIComponent(user.email)}`);
-  }
-
-  const isMostafaUser = user.name.toLowerCase().includes("mostafa");
-
-  await settleUserOverdrafts(user.id);
-  await settleLoanRequestPenalties(user.id);
-
-  let announcementAvailable = true;
-  let announcement:
-    | {
-        title: string;
-        titleAr: string | null;
-        body: string | null;
-        bodyAr: string | null;
-        mediaUrl: string | null;
-        youtubeId: string | null;
-        createdAt: string;
-        updatedAt: string;
-      }
-    | null = null;
-
+const getAnnouncement = cache(async () => {
   try {
     const now = new Date();
     const record = (await prisma.announcementSchedule.findFirst({
@@ -146,8 +103,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       },
     })) as AnnouncementRecord | null;
 
-    if (record) {
-      announcement = {
+    if (!record) return { available: true, announcement: null };
+
+    return {
+      available: true,
+      announcement: {
         title: record.title,
         titleAr: record.titleAr,
         body: record.body,
@@ -156,61 +116,127 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         youtubeId: record.youtubeId,
         createdAt: record.startsAt.toISOString(),
         updatedAt: record.updatedAt.toISOString(),
-      };
-    }
+      },
+    };
   } catch {
-    announcementAvailable = false;
+    return { available: false, announcement: null };
   }
+});
 
-  const [accounts, transactions, targetAccountNames, overdraftAnchors, incomingRequests, outgoingRequests, mostafaAccount, mostafaUser] = await Promise.all([
+const getDashboardData = cache(async (userId: number) => {
+  const [accounts, transactions, targetAccountNames, overdraftAnchors, incomingRequests, outgoingRequests] = await Promise.all([
     prisma.account.findMany({
-      where: { userId: user.id },
+      where: { userId },
       orderBy: { createdAt: "asc" },
       include: { _count: { select: { transactions: { where: { deletedAt: null } } } } },
     }) as Promise<AccountWithCount[]>,
     prisma.transaction.findMany({
-      where: { account: { userId: user.id }, deletedAt: null },
+      where: { account: { userId }, deletedAt: null },
       orderBy: { createdAt: "desc" },
       take: 10,
       include: { account: { select: { name: true } } },
     }) as Promise<TxnWithAccount[]>,
     prisma.account.findMany({
-      where: { userId: { not: user.id } },
+      where: { userId: { not: userId } },
+      orderBy: { name: "asc" },
+      take: 200,
       select: { name: true, user: { select: { name: true } } },
     }) as Promise<TargetAccount[]>,
     prisma.transaction.findMany({
-      where: { account: { userId: user.id }, type: { in: ["OVERDRAFT_ALERT"] }, deletedAt: null },
+      where: { account: { userId }, type: { in: ["OVERDRAFT_ALERT"] }, deletedAt: null },
       orderBy: { createdAt: "desc" },
       select: { accountId: true, createdAt: true },
     }) as Promise<OverdraftAnchor[]>,
     prisma.request.findMany({
-      where: { targetUserId: user.id },
+      where: { targetUserId: userId },
       orderBy: { createdAt: "desc" },
       take: 20,
+      select: {
+        id: true,
+        requesterId: true,
+        targetUserId: true,
+        amountCents: true,
+        type: true,
+        status: true,
+        description: true,
+        dueAt: true,
+        createdAt: true,
+        penaltyAccruedCents: true,
+      },
     }),
     prisma.request.findMany({
-      where: { requesterId: user.id },
+      where: { requesterId: userId },
       orderBy: { createdAt: "desc" },
       take: 20,
+      select: {
+        id: true,
+        requesterId: true,
+        targetUserId: true,
+        amountCents: true,
+        type: true,
+        status: true,
+        description: true,
+        dueAt: true,
+        createdAt: true,
+        penaltyAccruedCents: true,
+      },
     }),
-    prisma.account.findFirst({
-      where: { user: { name: { contains: "Mostafa", mode: "insensitive" } } },
-      orderBy: { createdAt: "asc" },
-      select: { name: true, balanceCents: true, user: { select: { name: true } } },
-    }) as Promise<FeaturedAccount | null>,
-    prisma.user.findFirst({ where: { name: { contains: "Mostafa", mode: "insensitive" } }, select: { id: true, name: true } }),
   ] as const);
 
-  const mostafaDebtAccount = mostafaUser
-    ? await prisma.account.findFirst({
-        where: { userId: mostafaUser.id, name: { contains: "debt", mode: "insensitive" } },
-        orderBy: { createdAt: "asc" },
-        select: { id: true, name: true, balanceCents: true, user: { select: { name: true } } },
-      }) ?? (await prisma.account.create({
-        data: { userId: mostafaUser.id, name: "Mostafa Debt", balanceCents: 0 },
-        select: { id: true, name: true, balanceCents: true, user: { select: { name: true } } },
-      }))
+  return { accounts, transactions, targetAccountNames, overdraftAnchors, incomingRequests, outgoingRequests };
+});
+
+const getMostafaData = cache(async () => {
+  const mostafaUser = await prisma.user.findFirst({
+    where: { name: { contains: "Mostafa", mode: "insensitive" } },
+    select: { id: true, name: true, accounts: { orderBy: { createdAt: "asc" }, select: { id: true, name: true, balanceCents: true } } },
+  });
+
+  if (!mostafaUser) {
+    return { mostafaAccount: null, mostafaDebtAccount: null };
+  }
+
+  const mostafaAccount = mostafaUser.accounts[0]
+    ? { name: mostafaUser.accounts[0].name, balanceCents: mostafaUser.accounts[0].balanceCents, user: { name: mostafaUser.name } }
     : null;
+
+  let mostafaDebt = mostafaUser.accounts.find((acct) => acct.name.toLowerCase().includes("debt")) || null;
+  if (!mostafaDebt) {
+    mostafaDebt = await prisma.account.create({
+      data: { userId: mostafaUser.id, name: "Mostafa Debt", balanceCents: 0 },
+      select: { id: true, name: true, balanceCents: true },
+    });
+  }
+
+  return {
+    mostafaAccount,
+    mostafaDebtAccount: mostafaDebt
+      ? { id: mostafaDebt.id, name: mostafaDebt.name, balanceCents: mostafaDebt.balanceCents, user: { name: mostafaUser.name } }
+      : null,
+  };
+});
+
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const resolvedParams = (await searchParams) ?? {};
+  const cookieStore = await cookies();
+  const locale = resolveLocale(resolvedParams.lang ?? cookieStore.get("lang")?.value ?? "en");
+  const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) => translate(locale, key, params);
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/");
+  }
+  if (!user.isVerified) {
+    redirect(`/verify?email=${encodeURIComponent(user.email)}`);
+  }
+
+  const isMostafaUser = user.name.toLowerCase().includes("mostafa");
+
+  // Run maintenance without blocking the initial render (best-effort on Vercel).
+  void settleUserOverdrafts(user.id);
+  void settleLoanRequestPenalties(user.id);
+
+  const [{ available: announcementAvailable, announcement }, { accounts, transactions, targetAccountNames, overdraftAnchors, incomingRequests, outgoingRequests }, { mostafaAccount, mostafaDebtAccount }] =
+    await Promise.all([getAnnouncement(), getDashboardData(user.id), getMostafaData()]);
 
   const totalBalanceCents = accounts.reduce((sum: number, a: AccountWithCount) => sum + a.balanceCents, 0);
   const userAccount = accounts[0];

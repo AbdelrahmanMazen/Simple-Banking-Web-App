@@ -1,27 +1,33 @@
-import nodemailer from "nodemailer";
-
 const DEFAULT_FROM = process.env.EMAIL_FROM || "SimpleBank <no-reply@simplebank.test>";
 
-function getTransport() {
+let cachedTransporter: import("nodemailer").Transporter | null | undefined;
+
+async function getTransport() {
+  if (cachedTransporter !== undefined) return cachedTransporter;
+
   const host = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT || 587);
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
 
   if (!host || !user || !pass) {
-    return null;
+    cachedTransporter = null;
+    return cachedTransporter;
   }
 
-  return nodemailer.createTransport({
+  const { default: nodemailer } = await import("nodemailer");
+  cachedTransporter = nodemailer.createTransport({
     host,
     port,
     secure: port === 465,
     auth: { user, pass },
   });
+
+  return cachedTransporter;
 }
 
 export async function sendVerificationEmail(to: string, code: string) {
-  const transporter = getTransport();
+  const transporter = await getTransport();
 
   const subject = "Your SimpleBank verification code";
   const text = `Use this code to verify your account: ${code}\nThis code expires in 10 minutes.`;
@@ -60,7 +66,7 @@ type TransactionEmailInput = {
 };
 
 export async function sendTransactionEmail(input: TransactionEmailInput) {
-  const transporter = getTransport();
+  const transporter = await getTransport();
   if (!transporter) {
     console.log(`[email] SMTP not configured; would send txn mail to ${input.to} for ${input.type} ${input.amountCents}`);
     return;
@@ -126,7 +132,7 @@ type OverdraftEmailInput = {
 };
 
 export async function sendOverdraftWarningEmail(input: OverdraftEmailInput) {
-  const transporter = getTransport();
+  const transporter = await getTransport();
   if (!transporter) {
     console.log(`[email] SMTP not configured; would send overdraft warning to ${input.to} at balance ${input.balanceCents}`);
     return;
@@ -183,7 +189,7 @@ type RequestEmailInput = {
 };
 
 export async function sendMoneyRequestEmail(input: RequestEmailInput) {
-  const transporter = getTransport();
+  const transporter = await getTransport();
   if (!transporter) {
     console.log(`[email] SMTP not configured; would send request email to ${input.to} for ${input.amountCents}`);
     return;
@@ -227,7 +233,7 @@ type RequestStatusEmailInput = {
 };
 
 export async function sendRequestStatusEmail(input: RequestStatusEmailInput) {
-  const transporter = getTransport();
+  const transporter = await getTransport();
   if (!transporter) {
     console.log(`[email] SMTP not configured; would send request status ${input.status} to ${input.to}`);
     return;
